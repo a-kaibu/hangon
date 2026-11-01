@@ -16,13 +16,14 @@
       <header class="topbar">
         <div class="brand">反魂<span>麻雀</span></div>
         <nav class="tools">
+          <button class="tool" data-act="guide" title="はじめての麻雀">遊び方</button>
           <button class="tool" data-act="yaku" title="役一覧">役一覧</button>
           <button class="tool" data-act="help" title="危険牌の見方">危険牌</button>
           <button class="tool" data-act="settings" title="設定">設定</button>
         </nav>
       </header>
       <main id="stage">
-        <div id="board" class="board"></div>
+        <div class="board-wrap"><div id="board" class="board"></div></div>
         <section id="me" class="me">
           <div id="assist" class="assist" aria-live="polite"></div>
           <div id="hand-row" class="hand-row"></div>

@@ -1,12 +1,13 @@
 import { Game } from './game.js';
 import { CpuAgent } from './ai.js';
 import { UI, HumanAgent } from './ui.js';
-import { symbolDefs } from './tiles-svg.js';
+import { tileSrc } from './ui.js';
 
 const DEFAULTS = {
   level: 'normal',
   length: 'hanchan',
   speed: 'normal',
+  threeD: true,
   assistShanten: true,
   assistReco: true,
   assistDanger: true,
@@ -23,10 +24,13 @@ function loadSettings() {
   return { ...DEFAULTS };
 }
 
-document.body.insertAdjacentHTML('afterbegin', symbolDefs());
+// 牌画像を先読み
+for (let k = 0; k < 34; k++) new Image().src = tileSrc(k);
+for (const k of [4, 13, 22]) new Image().src = tileSrc(k, true);
 const settings = loadSettings();
 if (new URLSearchParams(location.search).has('open')) settings.debugOpen = true;
 
+document.body.classList.toggle('three-d', settings.threeD);
 const ui = new UI(settings, startGame);
 
 function startGame() {

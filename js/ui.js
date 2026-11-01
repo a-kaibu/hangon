@@ -4,17 +4,24 @@ import { shanten, waits } from './shanten.js';
 import { chooseDiscard, LEVELS } from './ai.js';
 import { combinedDanger, dangerLevel, threatLevel } from './danger.js';
 import { YAKU_LIST, DORA_NOTE } from './yakulist.js';
+import { guidePages } from './guide.js';
 
 const REL_NAMES = ['あなた', '下家', '対面', '上家'];
 const ROT = ['0deg', '-90deg', '180deg', '90deg'];
 const DANGER_LABEL = ['安全', '比較的安全', '注意', '危険'];
 
+const SUIT_FILE = ['m', 'p', 's'];
+export function tileSrc(k, red = false) {
+  if (k >= 27) return `tiles/z${k - 26}.svg`;
+  return `tiles/${SUIT_FILE[Math.floor(k / 9)]}${red ? 0 : (k % 9) + 1}.svg`;
+}
+
 export function tileHtml(id, { kind = null, cls = '', sideways = false, back = false, attrs = '' } = {}) {
   if (back) return `<div class="tile back ${cls}"></div>`;
   const k = kind !== null ? kind : kindOf(id);
   const red = kind === null && isRed(id);
-  const sym = `t${k}${red ? 'r' : ''}`;
-  return `<div class="tile ${sideways ? 'sideways' : ''} ${cls}" ${attrs} title="${kindName(k)}${red ? '(赤)' : ''}"><svg viewBox="0 0 60 80"><use href="#${sym}"/></svg></div>`;
+  const name = `${kindName(k)}${red ? '(赤)' : ''}`;
+  return `<div class="tile ${sideways ? 'sideways' : ''} ${red ? 'red' : ''} ${cls}" ${attrs} title="${name}"><img src="${tileSrc(k, red)}" alt="${name}" draggable="false"></div>`;
 }
 
 const kindsHtml = (ks, cls = '') => ks.map((k) => tileHtml(null, { kind: k, cls })).join('');
@@ -64,6 +71,7 @@ export class UI {
       if (!b) return;
       if (b.dataset.act === 'yaku') this.showYakuList();
       if (b.dataset.act === 'help') this.showDangerHelp();
+      if (b.dataset.act === 'guide') this.showGuide();
       if (b.dataset.act === 'settings') this.showSettings(false);
     });
     this.handRow.addEventListener('pointerup', (e) => this.onHandPointer(e));
@@ -76,6 +84,12 @@ export class UI {
     this.handRow.addEventListener('pointerleave', () => {
       this.hoverKind = null;
       this.renderAssist();
+    });
+    this.modal.addEventListener('click', (e) => {
+      if (e.target === this.modal && this.dismiss) this.dismiss();
+    });
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && this.dismiss) this.dismiss();
     });
     window.addEventListener('resize', () => this.game && this.render());
   }
@@ -402,6 +416,7 @@ export class UI {
         parts.push(`おすすめ <span class="inl">${kindsHtml([an.recoKind])}</span> (${why})`);
       }
       if (this.riichiMode) parts.push('<span class="warn">リーチ: 切る牌を選んでください</span>');
+      else if (this.selected === null) parts.push('牌をタップで選択、もう一度タップで切る');
     } else if (this.settings.assistShanten && an.shanten13 !== undefined) {
       if (an.shanten13 === 0) {
         const w = an.waits.map((k) => `${tileHtml(null, { kind: k })}`).join('');
@@ -492,8 +507,8 @@ export class UI {
     if (!t || !pend || pend.type !== 'self') return;
     if (!t.classList.contains('ok')) return;
     const id = +t.dataset.id;
-    if (e.pointerType !== 'mouse' && this.selected !== id) {
-      // タッチ: 1回目で選択 (情報表示)、2回目で打牌
+    if (this.selected !== id) {
+      // 誤打防止: 1回目で選択 (情報表示)、同じ牌をもう1回で打牌
       this.selected = id;
       this.hoverKind = kindOf(id);
       this.renderHand();
@@ -531,24 +546,30 @@ export class UI {
   }
 
   // ---- モーダル ----
-  openModal(html) {
-    this.modal.innerHTML = `<div class="sheet">${html}</div>`;
+  // onDismiss: 外側クリック・Esc・×ボタンで閉じたときの処理 (省略時は閉じるだけ)
+  openModal(html, onDismiss = null) {
+    this.modal.innerHTML = `<div class="sheet"><button class="sheet-x" aria-label="閉じる" title="閉じる (Esc)">×</button>${html}</div>`;
     this.modal.classList.remove('hidden');
-    return this.modal.querySelector('.sheet');
+    this.dismiss = onDismiss || (() => this.closeModal());
+    const sheet = this.modal.querySelector('.sheet');
+    sheet.querySelector('.sheet-x').onclick = () => this.dismiss();
+    return sheet;
   }
   closeModal() {
     this.modal.classList.add('hidden');
     this.modal.innerHTML = '';
+    this.dismiss = null;
   }
 
-  waitButton(sheet, sel = '[data-close]') {
+  // 結果画面: ボタン・外側クリック・Esc のどれでも次へ進む
+  waitButton(html, dismissValue = '1') {
     return new Promise((resolve) => {
-      sheet.querySelectorAll(sel).forEach((b) =>
-        b.addEventListener('click', () => {
-          this.closeModal();
-          resolve(b.dataset.close);
-        }),
-      );
+      const done = (v) => {
+        this.closeModal();
+        resolve(v);
+      };
+      const sheet = this.openModal(html, () => done(dismissValue));
+      sheet.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => done(b.dataset.close)));
     });
   }
 
@@ -588,7 +609,7 @@ export class UI {
     }
     html += this.deltasHtml(r.deltas);
     html += `<div class="foot"><button class="btn primary" data-close="1">次へ</button></div>`;
-    await this.waitButton(this.openModal(html));
+    await this.waitButton(html);
   }
 
   async showDrawResult(r) {
@@ -600,12 +621,12 @@ export class UI {
     }
     html += this.deltasHtml(r.deltas);
     html += `<div class="foot"><button class="btn primary" data-close="1">次へ</button></div>`;
-    await this.waitButton(this.openModal(html));
+    await this.waitButton(html);
   }
 
   async showAbortResult(reason) {
     const html = `<h2>途中流局 — ${reason}</h2><p>この局はやり直しになります (親は継続、本場+1)。</p><div class="foot"><button class="btn primary" data-close="1">次へ</button></div>`;
-    await this.waitButton(this.openModal(html));
+    await this.waitButton(html);
   }
 
   async showFinal(ranking) {
@@ -613,7 +634,7 @@ export class UI {
       .map((r) => `<div class="${r.seat === 0 ? 'me-row' : ''}"><span>${r.rank}位 ${r.name}</span><b>${r.score}</b></div>`)
       .join('')}</div>
       <div class="foot"><button class="btn primary" data-close="new">もう一度</button></div>`;
-    const v = await this.waitButton(this.openModal(html));
+    const v = await this.waitButton(html);
     if (v === 'new') this.showSettings(true);
   }
 
@@ -655,6 +676,35 @@ export class UI {
         c.style.display = !q || c.dataset.s.includes(q) ? '' : 'none';
       });
     };
+  }
+
+  showGuide(start = 0, onClose = null) {
+    const pages = guidePages(tileHtml);
+    let i = start;
+    const sheet = this.openModal('<div class="guide"></div>', onClose);
+    const box = sheet.querySelector('.guide');
+    const draw = () => {
+      box.innerHTML = `<h2>はじめての麻雀 ${i + 1}/${pages.length}</h2>
+        <div class="guide-steps">${pages.map((pg, j) => `<button data-j="${j}" class="${j === i ? 'on' : ''}">${j + 1}. ${pg.title}</button>`).join('')}</div>
+        <div class="guide-body">${pages[i].html}</div>
+        <div class="guide-nav">
+          <button class="btn ghost" data-prev ${i === 0 ? 'disabled' : ''}>← 前へ</button>
+          <button class="btn primary" data-next>${i === pages.length - 1 ? '閉じる' : '次へ →'}</button>
+        </div>`;
+      sheet.scrollTop = 0;
+    };
+    box.addEventListener('click', (e) => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      if (b.dataset.j !== undefined) i = +b.dataset.j;
+      else if (b.hasAttribute('data-prev')) i = Math.max(0, i - 1);
+      else if (b.hasAttribute('data-next')) {
+        if (i === pages.length - 1) return this.dismiss();
+        i++;
+      }
+      draw();
+    });
+    draw();
   }
 
   showDangerHelp() {
@@ -700,11 +750,21 @@ export class UI {
         ${chk('assistShanten', 'シャンテン数・待ちを表示')}
         ${chk('assistReco', 'おすすめの打牌を光らせる')}
         ${chk('assistDanger', '危険牌の目安を表示 (リーチ・仕掛けに対して)')}
+        ${chk('threeD', '卓を3Dで表示')}
         ${chk('noCalls', '鳴きの確認をしない (ロンだけ聞く)')}
       </div>
+      ${isStart ? '<div class="callbox">麻雀がはじめてなら、まず <button class="btn primary" data-guide>遊び方を見る</button></div>' : ''}
       <p>ルール: 4人打ち・赤ドラ3枚・喰いタンあり・後付けあり・25000点持ち30000点返し・トビあり。</p>
       <div class="foot">${isStart ? '' : '<button class="btn ghost" data-x>閉じる</button>'}<button class="btn ${isStart ? 'primary' : 'ghost'}" data-new>${isStart ? '対局開始' : '新しい対局を始める'}</button>${isStart ? '' : '<button class="btn primary" data-save>保存</button>'}</div>`;
-    const sheet = this.openModal(html);
+    const sheet = this.openModal(
+      html,
+      isStart && !this.game
+        ? () => {
+            this.closeModal();
+            this.onNewGame();
+          }
+        : null,
+    );
     sheet.querySelectorAll('.seg').forEach((el) =>
       el.addEventListener('click', (e) => {
         const b = e.target.closest('button');
@@ -721,6 +781,7 @@ export class UI {
     const apply = () => {
       Object.assign(this.settings, s);
       this.saveSettings();
+      document.body.classList.toggle('three-d', !!this.settings.threeD);
       this._an = null;
       if (this.game) this.render();
     };
@@ -729,6 +790,12 @@ export class UI {
       this.closeModal();
       this.onNewGame();
     };
+    const gb = sheet.querySelector('[data-guide]');
+    if (gb)
+      gb.onclick = () => {
+        apply();
+        this.showGuide(0, () => this.showSettings(true));
+      };
     const save = sheet.querySelector('[data-save]');
     if (save)
       save.onclick = () => {

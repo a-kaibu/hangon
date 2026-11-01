@@ -19,7 +19,9 @@
   - シャンテン数・待ち・フリテン表示
   - おすすめ打牌のハイライト
   - リーチや仕掛けに対する手牌ごとの危険度 (現物・筋・壁・字牌の見え枚数) と理由
+- 「遊び方」: ルールの基本 (ゴール→牌の種類→面子→1巡の流れ→聴牌と和了→役→鳴き→フリテン→点数→守り方) を順に読める初心者ガイド
 - 役一覧 (検索・牌姿の例・鳴いた時の翻数)、危険牌の見方の解説
+- 3D 表示の卓 (CSS 3D、設定でオフ可)、誤打防止の 2 回タップ打牌
 
 ## アルゴリズム
 
@@ -44,3 +46,7 @@ vp run sim    # CPU 対戦 200 半荘の成績
 デプロイは `.github/workflows/deploy.yml` (setup-vp → check → test → build → deploy-pages)。リポジトリの Settings → Pages の Source は「GitHub Actions」にしてください。
 
 URL に `?open` を付けると CPU の手牌が見えるデバッグ表示になります。
+
+## クレジット
+
+牌の画像は [FluffyStuff/riichi-mahjong-tiles](https://github.com/FluffyStuff/riichi-mahjong-tiles) (CC0 / パブリックドメイン) を使用しています (`public/tiles/`)。

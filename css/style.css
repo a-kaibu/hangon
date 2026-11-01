@@ -293,19 +293,24 @@ button {
   position: relative;
   width: var(--w);
   height: calc(var(--w) * 1.36);
-  background: linear-gradient(180deg, #fffdf6 0%, var(--tile-face) 70%, #efe6cf 100%);
+  background: linear-gradient(180deg, #ffffff 0%, #f6f4ee 75%, #e9e4d6 100%);
   border-radius: calc(var(--w) * 0.12);
   box-shadow:
-    inset 0 -2px 0 var(--tile-edge),
+    inset 0 calc(var(--w) * -0.07) 0 #e3c77f,
+    inset 0 calc(var(--w) * -0.09) 0 #d9b968,
     0 1px 0 rgba(0, 0, 0, 0.35),
     0 2px 3px rgba(0, 0, 0, 0.25);
   flex: none;
 }
-.tile svg {
+.tile img {
   position: absolute;
-  inset: 8% 6% 10% 6%;
-  width: 88%;
-  height: 82%;
+  left: 4%;
+  top: 3%;
+  width: 92%;
+  height: 89%;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
 }
 .tile.back {
   background: linear-gradient(160deg, var(--tile-back) 0%, var(--tile-back-2) 100%);
@@ -318,12 +323,11 @@ button {
   width: calc(var(--w) * 1.36);
   height: var(--w);
 }
-.tile.sideways svg {
-  inset: auto;
+.tile.sideways img {
   left: 50%;
-  top: 50%;
-  width: calc(var(--w) * 0.82);
-  height: calc(var(--w) * 1.12);
+  top: 46%;
+  width: calc(var(--w) * 0.9);
+  height: calc(var(--w) * 1.24);
   transform: translate(-50%, -50%) rotate(-90deg);
 }
 .tile.dim {
@@ -387,9 +391,15 @@ button {
 .my-hand.can-discard .tile.ok {
   cursor: pointer;
 }
-.my-hand.can-discard .tile.ok:hover,
+@media (hover: hover) {
+  .my-hand.can-discard .tile.ok:hover {
+    transform: translateY(-7%);
+  }
+}
 .my-hand .tile.selected {
-  transform: translateY(-18%);
+  transform: translateY(-24%);
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 .my-hand .tile.ng {
   filter: brightness(0.55);
@@ -886,4 +896,172 @@ button {
     padding: 8px 12px;
     font-size: 14px;
   }
+}
+
+.sheet {
+  position: relative;
+}
+.sheet-x {
+  position: sticky;
+  top: 0;
+  float: right;
+  margin: -8px -8px 0 8px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 2;
+}
+.sheet-x:hover {
+  border-color: var(--accent);
+}
+
+/* ガイド */
+.guide-steps {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 0 0 12px;
+}
+.guide-steps button {
+  border: none;
+  background: var(--panel-2);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.guide-steps button.on {
+  background: var(--accent);
+  color: #2a1a00;
+  font-weight: 800;
+}
+.guide-body {
+  min-height: 300px;
+}
+.guide-body p {
+  color: var(--text);
+  font-size: 15px;
+}
+.guide-body .note {
+  color: var(--muted);
+  font-size: 13px;
+}
+.tiles-ex {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+  margin: 10px 0;
+}
+.tiles-ex .grp {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.tiles-ex .grp > div:first-child {
+  display: flex;
+  gap: 1px;
+}
+.tiles-ex .tile {
+  --w: min(30px, 7vw);
+}
+.tiles-ex .cap {
+  font-size: 12px;
+  color: var(--muted);
+}
+.callbox {
+  background: var(--panel-2);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 10px 0;
+  font-size: 14px;
+  line-height: 1.7;
+}
+.guide-nav {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+/* ---------- 3D 表示 ---------- */
+.board-wrap {
+  perspective: 1600px;
+  perspective-origin: 50% 0%;
+}
+.three-d .board {
+  transform: rotateX(32deg);
+  transform-origin: 50% 60%;
+  transform-style: preserve-3d;
+  overflow: visible;
+  margin-top: calc(var(--bw) * -0.06);
+  margin-bottom: calc(var(--bw) * -0.07);
+  box-shadow:
+    inset 0 0 0 2px rgba(0, 0, 0, 0.25),
+    inset 0 0 60px rgba(0, 0, 0, 0.35),
+    0 calc(var(--tw) * 0.5) 0 #0b1417,
+    0 calc(var(--tw) * 0.5 + 18px) 40px rgba(0, 0, 0, 0.55);
+}
+.three-d .seat {
+  transform-style: preserve-3d;
+}
+.three-d .opp-area {
+  transform-style: preserve-3d;
+  transform-origin: 50% 100%;
+  transform: translateX(-50%) rotateX(-38deg);
+}
+.three-d .center {
+  transform: translate(-50%, -50%) translateZ(2px);
+}
+/* 卓上の牌に厚み */
+.three-d .board .tile:not(.back) {
+  box-shadow:
+    0 calc(var(--w) * 0.1) 0 #d9b968,
+    0 calc(var(--w) * 0.1 + 2px) 3px rgba(0, 0, 0, 0.45);
+}
+.three-d .board .tile.back {
+  box-shadow:
+    0 calc(var(--w) * 0.12) 0 #f2eee2,
+    0 calc(var(--w) * 0.12 + 2px) 3px rgba(0, 0, 0, 0.45);
+}
+.three-d .board .tile.last {
+  box-shadow:
+    0 calc(var(--w) * 0.1) 0 #d9b968,
+    0 0 0 2px var(--accent),
+    0 0 10px var(--accent);
+}
+/* 自分の手牌も立てて見せる */
+.three-d .my-hand {
+  perspective: 900px;
+}
+.three-d .my-hand .tile {
+  box-shadow:
+    0 calc(var(--w) * 0.08) 0 #d9b968,
+    0 calc(var(--w) * 0.12) 0 #c49f4c,
+    0 calc(var(--w) * 0.12 + 3px) 6px rgba(0, 0, 0, 0.5);
+}
+.three-d .my-hand .tile.reco {
+  box-shadow:
+    0 calc(var(--w) * 0.08) 0 #d9b968,
+    0 calc(var(--w) * 0.12) 0 #c49f4c,
+    0 0 0 2px var(--safe),
+    0 0 14px rgba(92, 194, 140, 0.8);
+}
+
+.me {
+  position: relative;
+  z-index: 2;
+}
+.three-d .assist {
+  background: rgba(8, 18, 22, 0.7);
+  border-radius: 999px;
 }
