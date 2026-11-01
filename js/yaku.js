@@ -1,8 +1,20 @@
 // 和了判定・役判定・符計算・点数計算
 
 import {
-  isHonor, isYaochu, isSimple, isTerminal, isDragon, isWind, suitOf, numOf,
-  doraFromIndicator, HAKU, HATSU, CHUN, EAST, kindOf, isRed,
+  isHonor,
+  isYaochu,
+  isSimple,
+  isTerminal,
+  isDragon,
+  isWind,
+  suitOf,
+  numOf,
+  doraFromIndicator,
+  HAKU,
+  HATSU,
+  CHUN,
+  EAST,
+  isRed,
 } from './tile.js';
 
 // ---- 面子分解 ----
@@ -22,16 +34,27 @@ export function decompose(counts) {
 
 function extract(c, i, ms, cb) {
   while (i < 34 && c[i] === 0) i++;
-  if (i >= 34) { cb(ms); return; }
+  if (i >= 34) {
+    cb(ms);
+    return;
+  }
   if (c[i] >= 3) {
-    c[i] -= 3; ms.push({ type: 'koutsu', k: i });
+    c[i] -= 3;
+    ms.push({ type: 'koutsu', k: i });
     extract(c, i, ms, cb);
-    ms.pop(); c[i] += 3;
+    ms.pop();
+    c[i] += 3;
   }
   if (i < 27 && i % 9 <= 6 && c[i + 1] > 0 && c[i + 2] > 0) {
-    c[i]--; c[i + 1]--; c[i + 2]--; ms.push({ type: 'shuntsu', k: i });
+    c[i]--;
+    c[i + 1]--;
+    c[i + 2]--;
+    ms.push({ type: 'shuntsu', k: i });
     extract(c, i, ms, cb);
-    ms.pop(); c[i]++; c[i + 1]++; c[i + 2]++;
+    ms.pop();
+    c[i]++;
+    c[i + 1]++;
+    c[i + 2]++;
   }
 }
 
@@ -109,8 +132,11 @@ export function evaluate(ctx) {
   const menzen = ctx.melds.every((m) => m.type === 'ankan');
   const allCounts = ctx.hand.slice();
   for (const m of ctx.melds) {
-    if (m.type === 'chi') { allCounts[m.k]++; allCounts[m.k + 1]++; allCounts[m.k + 2]++; }
-    else if (m.type === 'pon') allCounts[m.k] += 3;
+    if (m.type === 'chi') {
+      allCounts[m.k]++;
+      allCounts[m.k + 1]++;
+      allCounts[m.k + 2]++;
+    } else if (m.type === 'pon') allCounts[m.k] += 3;
     else allCounts[m.k] += 4;
   }
   const candidates = [];
@@ -131,13 +157,20 @@ export function evaluate(ctx) {
   if (ctx.chiihou) situationalYakuman.push(['地和', 1]);
 
   // 全体の色・字牌系
-  const tileSetYaku = (isChiitoiForm) => {
+  const tileSetYaku = () => {
     const ys = [];
     const ym = [];
-    let suits = new Set(), honors = 0, allSimple = true, allYaochu = true, allHonor = true, allGreen = true, allTerminal = true;
+    let suits = new Set(),
+      honors = 0,
+      allSimple = true,
+      allYaochu = true,
+      allHonor = true,
+      allGreen = true,
+      allTerminal = true;
     for (let k = 0; k < 34; k++) {
       if (!allCounts[k]) continue;
-      if (isHonor(k)) honors++; else suits.add(suitOf(k));
+      if (isHonor(k)) honors++;
+      else suits.add(suitOf(k));
       if (!isSimple(k)) allSimple = false;
       if (!isYaochu(k)) allYaochu = false;
       if (!isHonor(k)) allHonor = false;
@@ -161,7 +194,9 @@ export function evaluate(ctx) {
     const juusan = ctx.hand[ctx.winTile] === 2;
     candidates.push({
       yakuman: [...situationalYakuman, [juusan ? '国士無双十三面待ち' : '国士無双', juusan ? 2 : 1]],
-      yaku: [], fu: 0, form: 'kokushi',
+      yaku: [],
+      fu: 0,
+      form: 'kokushi',
     });
   }
 
@@ -171,7 +206,8 @@ export function evaluate(ctx) {
     candidates.push({
       yakuman: [...situationalYakuman, ...ym],
       yaku: [...situational, ['七対子', 2], ...ys],
-      fu: 25, form: 'chiitoi',
+      fu: 25,
+      form: 'chiitoi',
     });
   }
 
@@ -198,7 +234,7 @@ export function evaluate(ctx) {
       const key = pl.wait + ':' + (pl.idx >= 0 ? dec.mentsu[pl.idx].type + dec.mentsu[pl.idx].k : 'h');
       if (seen.has(key)) continue;
       seen.add(key);
-      candidates.push(evalStandard(ctx, dec, pl, menzen, situational, situationalYakuman, tileSetYaku, allCounts));
+      candidates.push(evalStandard(ctx, dec, pl, menzen, situational, situationalYakuman, tileSetYaku));
     }
   }
 
@@ -231,14 +267,16 @@ export function evaluate(ctx) {
 }
 
 function countDora(ctx, allCounts) {
-  let dora = 0, ura = 0, aka = 0;
+  let dora = 0,
+    ura = 0,
+    aka = 0;
   for (const ind of ctx.doraIndicators) dora += allCounts[doraFromIndicator(ind)];
   if (ctx.riichi) for (const ind of ctx.uraIndicators || []) ura += allCounts[doraFromIndicator(ind)];
   for (const id of ctx.allIds || []) if (isRed(id)) aka++;
   return { dora, ura, aka };
 }
 
-function evalStandard(ctx, dec, pl, menzen, situational, situationalYakuman, tileSetYaku, allCounts) {
+function evalStandard(ctx, dec, pl, menzen, situational, situationalYakuman, tileSetYaku) {
   // 面子の一覧 (open: 副露, concealed: 暗刻扱いか)
   const sets = [];
   dec.mentsu.forEach((m, idx) => {
@@ -286,15 +324,24 @@ function evalStandard(ctx, dec, pl, menzen, situational, situationalYakuman, til
 
   // 三色同順
   for (let n = 0; n < 7; n++) {
-    if ([0, 9, 18].every((o) => shuntsu.some((s) => s.k === o + n))) { yaku.push(['三色同順', menzen ? 2 : 1]); break; }
+    if ([0, 9, 18].every((o) => shuntsu.some((s) => s.k === o + n))) {
+      yaku.push(['三色同順', menzen ? 2 : 1]);
+      break;
+    }
   }
   // 一気通貫
   for (const o of [0, 9, 18]) {
-    if ([0, 3, 6].every((d) => shuntsu.some((s) => s.k === o + d))) { yaku.push(['一気通貫', menzen ? 2 : 1]); break; }
+    if ([0, 3, 6].every((d) => shuntsu.some((s) => s.k === o + d))) {
+      yaku.push(['一気通貫', menzen ? 2 : 1]);
+      break;
+    }
   }
   // 三色同刻
   for (let n = 0; n < 9; n++) {
-    if ([0, 9, 18].every((o) => koutsu.some((s) => s.k === o + n))) { yaku.push(['三色同刻', 2]); break; }
+    if ([0, 9, 18].every((o) => koutsu.some((s) => s.k === o + n))) {
+      yaku.push(['三色同刻', 2]);
+      break;
+    }
   }
   // 対々和
   if (koutsu.length === 4) yaku.push(['対々和', 2]);
@@ -306,8 +353,8 @@ function evalStandard(ctx, dec, pl, menzen, situational, situationalYakuman, til
   else if (kans === 3) yaku.push(['三槓子', 2]);
 
   // 混全帯么九 / 純全帯么九
-  const setHasYaochu = (s) => s.type === 'shuntsu' ? (numOf(s.k) === 1 || numOf(s.k) === 7) : isYaochu(s.k);
-  const setHasTerminal = (s) => s.type === 'shuntsu' ? (numOf(s.k) === 1 || numOf(s.k) === 7) : isTerminal(s.k);
+  const setHasYaochu = (s) => (s.type === 'shuntsu' ? numOf(s.k) === 1 || numOf(s.k) === 7 : isYaochu(s.k));
+  const setHasTerminal = (s) => (s.type === 'shuntsu' ? numOf(s.k) === 1 || numOf(s.k) === 7 : isTerminal(s.k));
   if (shuntsu.length > 0) {
     if (sets.every(setHasTerminal) && isTerminal(head)) yaku.push(['純全帯么九', menzen ? 3 : 2]);
     else if (sets.every(setHasYaochu) && isYaochu(head)) yaku.push(['混全帯么九', menzen ? 2 : 1]);

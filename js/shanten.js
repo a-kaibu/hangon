@@ -31,11 +31,19 @@ function suitOptions(a, honor) {
         cand.push([m + dm, t + dt, p + dp]);
       }
     };
-    if (a[i] >= 3) { a[i] -= 3; add(suitOptions(a, honor), 1, 0, 0); a[i] += 3; }
-    if (!honor && i + 2 < 9 && a[i + 1] && a[i + 2]) {
-      a[i]--; a[i + 1]--; a[i + 2]--;
+    if (a[i] >= 3) {
+      a[i] -= 3;
       add(suitOptions(a, honor), 1, 0, 0);
-      a[i]++; a[i + 1]++; a[i + 2]++;
+      a[i] += 3;
+    }
+    if (!honor && i + 2 < 9 && a[i + 1] && a[i + 2]) {
+      a[i]--;
+      a[i + 1]--;
+      a[i + 2]--;
+      add(suitOptions(a, honor), 1, 0, 0);
+      a[i]++;
+      a[i + 1]++;
+      a[i + 2]++;
     }
     if (a[i] >= 2) {
       a[i] -= 2;
@@ -45,10 +53,24 @@ function suitOptions(a, honor) {
       a[i] += 2;
     }
     if (!honor) {
-      if (i + 1 < 9 && a[i + 1]) { a[i]--; a[i + 1]--; add(suitOptions(a, honor), 0, 1, 0); a[i]++; a[i + 1]++; }
-      if (i + 2 < 9 && a[i + 2]) { a[i]--; a[i + 2]--; add(suitOptions(a, honor), 0, 1, 0); a[i]++; a[i + 2]++; }
+      if (i + 1 < 9 && a[i + 1]) {
+        a[i]--;
+        a[i + 1]--;
+        add(suitOptions(a, honor), 0, 1, 0);
+        a[i]++;
+        a[i + 1]++;
+      }
+      if (i + 2 < 9 && a[i + 2]) {
+        a[i]--;
+        a[i + 2]--;
+        add(suitOptions(a, honor), 0, 1, 0);
+        a[i]++;
+        a[i + 2]++;
+      }
     }
-    a[i]--; add(suitOptions(a, honor), 0, 0, 0); a[i]++;
+    a[i]--;
+    add(suitOptions(a, honor), 0, 0, 0);
+    a[i]++;
     res = pareto(cand);
   }
   mm.set(key, res);
@@ -61,7 +83,10 @@ function pareto(cand) {
     let dominated = false;
     for (const d of cand) {
       if (d === c) continue;
-      if (d[2] === c[2] && d[0] >= c[0] && d[1] >= c[1] && (d[0] > c[0] || d[1] > c[1])) { dominated = true; break; }
+      if (d[2] === c[2] && d[0] >= c[0] && d[1] >= c[1] && (d[0] > c[0] || d[1] > c[1])) {
+        dominated = true;
+        break;
+      }
     }
     if (!dominated && !out.some((o) => o[0] === c[0] && o[1] === c[1] && o[2] === c[2])) out.push(c);
   }
@@ -76,28 +101,30 @@ export function standardShanten(counts, meldCount = 0) {
     suitOptions(counts.slice(27, 34), true),
   ];
   let best = 8;
-  for (const a of parts[0]) for (const b of parts[1]) {
-    const p2 = a[2] + b[2];
-    if (p2 > 1) continue;
-    for (const c of parts[2]) {
-      const p3 = p2 + c[2];
-      if (p3 > 1) continue;
-      for (const d of parts[3]) {
-        const p = p3 + d[2];
-        if (p > 1) continue;
-        const m = a[0] + b[0] + c[0] + d[0] + meldCount;
-        let t = a[1] + b[1] + c[1] + d[1];
-        if (m + t > 4) t = 4 - m;
-        const s = 8 - 2 * m - t - p;
-        if (s < best) best = s;
+  for (const a of parts[0])
+    for (const b of parts[1]) {
+      const p2 = a[2] + b[2];
+      if (p2 > 1) continue;
+      for (const c of parts[2]) {
+        const p3 = p2 + c[2];
+        if (p3 > 1) continue;
+        for (const d of parts[3]) {
+          const p = p3 + d[2];
+          if (p > 1) continue;
+          const m = a[0] + b[0] + c[0] + d[0] + meldCount;
+          let t = a[1] + b[1] + c[1] + d[1];
+          if (m + t > 4) t = 4 - m;
+          const s = 8 - 2 * m - t - p;
+          if (s < best) best = s;
+        }
       }
     }
-  }
   return best;
 }
 
 export function chiitoiShanten(counts) {
-  let pairs = 0, kinds = 0;
+  let pairs = 0,
+    kinds = 0;
   for (let i = 0; i < 34; i++) {
     if (counts[i] >= 1) kinds++;
     if (counts[i] >= 2) pairs++;
@@ -106,7 +133,8 @@ export function chiitoiShanten(counts) {
 }
 
 export function kokushiShanten(counts) {
-  let y = 0, pair = 0;
+  let y = 0,
+    pair = 0;
   for (let i = 0; i < 34; i++) {
     if (!isYaochu(i)) continue;
     if (counts[i] >= 1) y++;
@@ -151,7 +179,10 @@ export function ukeire(counts, meldCount, remaining, base = null) {
     counts[k]++;
     const s = shanten(counts, meldCount);
     counts[k]--;
-    if (s < s0) { total += remaining[k]; tiles.push(k); }
+    if (s < s0) {
+      total += remaining[k];
+      tiles.push(k);
+    }
   }
   return { total, tiles, shanten: s0 };
 }

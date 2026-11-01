@@ -4,15 +4,22 @@ import { UI, HumanAgent } from './ui.js';
 import { symbolDefs } from './tiles-svg.js';
 
 const DEFAULTS = {
-  level: 'normal', length: 'hanchan', speed: 'normal',
-  assistShanten: true, assistReco: true, assistDanger: true, noCalls: false,
+  level: 'normal',
+  length: 'hanchan',
+  speed: 'normal',
+  assistShanten: true,
+  assistReco: true,
+  assistDanger: true,
+  noCalls: false,
 };
 
 function loadSettings() {
   try {
     const raw = localStorage.getItem('hangon.settings');
     if (raw) return { ...DEFAULTS, ...JSON.parse(raw) };
-  } catch (e) { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return { ...DEFAULTS };
 }
 
@@ -33,7 +40,12 @@ function startGame() {
   });
   game.names = ['あなた', '下家 CPU', '対面 CPU', '上家 CPU'];
   ui.attach(game);
-  game.run().catch((e) => { if (e.message !== 'cancelled') { console.error(e); alert('エラーが発生しました: ' + e.message); } });
+  game.run().catch((e) => {
+    if (e.message !== 'cancelled') {
+      console.error(e);
+      alert('エラーが発生しました: ' + e.message);
+    }
+  });
 }
 
 ui.showSettings(true);

@@ -3,7 +3,7 @@
 // 「その牌で放銃する確率(%)」の目安を返す。数値は公開されている
 // 統計(対リーチ時の牌種別放銃率)のおおよその傾向に基づく概算。
 
-import { kindOf, isHonor, numOf, suitOf, isDragon, doraFromIndicator } from './tile.js';
+import { kindOf, isHonor, numOf, isDragon, doraFromIndicator } from './tile.js';
 
 // 相手 target が「安全」と分かっている牌 (現物)
 export function safeKinds(game, target) {
@@ -31,11 +31,22 @@ export function tileDanger(game, viewer, target, k, visible, safe) {
     const left = 4 - visible[k];
     const yakuhai = isDragon(k) || k === game.seatWind(target) || k === game.roundWindKind;
     let pct, reason;
-    if (left <= 0) { pct = 0; reason = '4枚見え'; }
-    else if (left === 1) { pct = 1.0; reason = '字牌ラス1 (単騎のみ)'; }
-    else if (left === 2) { pct = 3.0; reason = '字牌2枚見え'; }
-    else if (left === 3) { pct = yakuhai ? 6.5 : 5.0; reason = '字牌1枚見え'; }
-    else { pct = yakuhai ? 9.0 : 7.0; reason = '生牌 (まだ見えていない字牌)'; }
+    if (left <= 0) {
+      pct = 0;
+      reason = '4枚見え';
+    } else if (left === 1) {
+      pct = 1.0;
+      reason = '字牌ラス1 (単騎のみ)';
+    } else if (left === 2) {
+      pct = 3.0;
+      reason = '字牌2枚見え';
+    } else if (left === 3) {
+      pct = yakuhai ? 6.5 : 5.0;
+      reason = '字牌1枚見え';
+    } else {
+      pct = yakuhai ? 9.0 : 7.0;
+      reason = '生牌 (まだ見えていない字牌)';
+    }
     return { pct: pct * doraMul, reason, tag: left <= 2 ? '字牌' : '字牌注意' };
   }
   const n = numOf(k);
@@ -47,13 +58,19 @@ export function tileDanger(game, viewer, target, k, visible, safe) {
   const sides = [];
   if (n >= 3) sides.push({ shape: [n - 2, n - 1], suji: n - 3 });
   if (n <= 7) sides.push({ shape: [n + 1, n + 2], suji: n + 3 });
-  let open = 0, sujiKilled = 0, kabeKilled = 0, oneCh = 0;
+  let open = 0,
+    sujiKilled = 0,
+    kabeKilled = 0,
+    oneCh = 0;
   for (const s of sides) {
     const bySuji = s.suji >= 1 && s.suji <= 9 && safe.has(kindAt(s.suji));
     const byKabe = noChance(s.shape[0]) || noChance(s.shape[1]);
     if (bySuji) sujiKilled++;
     else if (byKabe) kabeKilled++;
-    else { open++; if (oneChance(s.shape[0]) || oneChance(s.shape[1])) oneCh++; }
+    else {
+      open++;
+      if (oneChance(s.shape[0]) || oneChance(s.shape[1])) oneCh++;
+    }
   }
   const edge = n === 1 || n === 9 ? 0 : n === 2 || n === 8 ? 1 : n === 3 || n === 7 ? 2 : 3;
   let pct, reason, tag;
@@ -63,18 +80,27 @@ export function tileDanger(game, viewer, target, k, visible, safe) {
     pct = [1.8, 3.0, 4.0, 4.0][edge];
     reason = sides.length > 1 ? `両側とも${kill}で両面なし` : `${kill}で両面なし`;
     tag = sujiKilled ? '筋' : '壁';
-    if (visible[k] >= 3) { pct *= 0.5; reason += '・残り1枚'; }
+    if (visible[k] >= 3) {
+      pct *= 0.5;
+      reason += '・残り1枚';
+    }
   } else if (sides.length === 2 && open === 1) {
     pct = 7.0;
     reason = '片筋 (片側の両面だけ残る)';
     tag = '片筋';
-    if (oneCh) { pct = 5.0; reason += '・ワンチャンス'; }
+    if (oneCh) {
+      pct = 5.0;
+      reason += '・ワンチャンス';
+    }
   } else {
     pct = [5.5, 7.5, 9.0, 12.0][edge];
     if (n === 5) pct = 12.5;
     reason = '無筋';
     tag = '無筋';
-    if (oneCh) { pct *= 0.7; reason += '・ワンチャンス'; }
+    if (oneCh) {
+      pct *= 0.7;
+      reason += '・ワンチャンス';
+    }
   }
   return { pct: pct * doraMul, reason: reason + (doraMul > 1 ? '・ドラ' : ''), tag };
 }

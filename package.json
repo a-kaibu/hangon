@@ -3,7 +3,17 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node test/run.js && node test/sim.js 20",
+    "dev": "vp dev",
+    "build": "vp build",
+    "preview": "vp preview",
+    "test": "vp test",
+    "check": "vp check",
     "sim": "node test/sim.js 200"
+  },
+  "devDependencies": {
+    "vite-plus": "^1.4.0"
+  },
+  "engines": {
+    "node": ">=22.18"
   }
 }

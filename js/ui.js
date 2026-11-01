@@ -1,7 +1,7 @@
 // 画面描画と人間プレイヤーの入力
-import { kindOf, isRed, kindName, WIND_NAMES, idsToCounts, parseKinds, sortIds, doraFromIndicator } from './tile.js';
+import { kindOf, isRed, kindName, WIND_NAMES, idsToCounts, parseKinds, sortIds } from './tile.js';
 import { shanten, waits } from './shanten.js';
-import { analyzeDiscards, chooseDiscard, LEVELS } from './ai.js';
+import { chooseDiscard, LEVELS } from './ai.js';
 import { combinedDanger, dangerLevel, threatLevel } from './danger.js';
 import { YAKU_LIST, DORA_NOTE } from './yakulist.js';
 
@@ -73,14 +73,21 @@ export class UI {
       this.hoverKind = kindOf(+t.dataset.id);
       this.renderAssist();
     });
-    this.handRow.addEventListener('pointerleave', () => { this.hoverKind = null; this.renderAssist(); });
+    this.handRow.addEventListener('pointerleave', () => {
+      this.hoverKind = null;
+      this.renderAssist();
+    });
     window.addEventListener('resize', () => this.game && this.render());
   }
 
-  get speed() { return { slow: 1.6, normal: 1, fast: 0.45 }[this.settings.speed] ?? 1; }
+  get speed() {
+    return { slow: 1.6, normal: 1, fast: 0.45 }[this.settings.speed] ?? 1;
+  }
   sleep(ms) {
     const g = this.game;
-    return new Promise((r) => setTimeout(r, ms * this.speed)).then(() => { if (g !== this.game) throw new Error('cancelled'); });
+    return new Promise((r) => setTimeout(r, ms * this.speed)).then(() => {
+      if (g !== this.game) throw new Error('cancelled');
+    });
   }
 
   attach(game) {
@@ -93,7 +100,9 @@ export class UI {
   async event(type, data, game) {
     if (game !== this.game) throw new Error('cancelled');
     switch (type) {
-      case 'gameStart': this.render(); break;
+      case 'gameStart':
+        this.render();
+        break;
       case 'handStart':
         this.lastDiscardId = null;
         this.render();
@@ -106,11 +115,15 @@ export class UI {
         break;
       case 'discard':
         this.lastDiscardId = data.id;
-        if (data.riichi) { this.callout('リーチ', data.seat); }
+        if (data.riichi) {
+          this.callout('リーチ', data.seat);
+        }
         this.render();
-        await this.sleep(data.seat === 0 ? 120 : (data.riichi ? 800 : 420));
+        await this.sleep(data.seat === 0 ? 120 : data.riichi ? 800 : 420);
         break;
-      case 'riichiEstablished': this.render(); break;
+      case 'riichiEstablished':
+        this.render();
+        break;
       case 'call': {
         const name = { pon: 'ポン', chi: 'チー', minkan: 'カン' }[data.type];
         this.callout(name, data.seat);
@@ -123,7 +136,9 @@ export class UI {
         this.render();
         await this.sleep(650);
         break;
-      case 'dora': this.render(); break;
+      case 'dora':
+        this.render();
+        break;
       case 'win': {
         const r = data.result;
         for (const w of r.wins) this.callout(w.tsumo ? 'ツモ' : 'ロン', w.seat, false, true);
@@ -147,15 +162,24 @@ export class UI {
         this.render();
         await this.showFinal(data.ranking);
         break;
-      default: break;
+      default:
+        break;
     }
   }
 
   callout(text, seat, center = false, red = false) {
     const rect = this.board.getBoundingClientRect();
-    const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
+    const cx = rect.left + rect.width / 2,
+      cy = rect.top + rect.height / 2;
     const off = rect.width * 0.3;
-    const pos = center ? [cx, cy] : [[cx, cy + off], [cx + off, cy], [cx, cy - off], [cx - off, cy]][seat];
+    const pos = center
+      ? [cx, cy]
+      : [
+          [cx, cy + off],
+          [cx + off, cy],
+          [cx, cy - off],
+          [cx - off, cy],
+        ][seat];
     const el = document.createElement('div');
     el.className = 'callout' + (red ? ' red' : '');
     el.textContent = text;
@@ -168,7 +192,10 @@ export class UI {
   // ---- 描画 ----
   render(reveal = false) {
     const g = this.game;
-    if (!g || !g.players) { this.board.innerHTML = ''; return; }
+    if (!g || !g.players) {
+      this.board.innerHTML = '';
+      return;
+    }
     this.renderBoard(reveal);
     this.renderHand();
     this.renderActions();
@@ -188,15 +215,27 @@ export class UI {
         const r = Math.min(Math.floor(i / 6), 3);
         (rows[r] ||= []).push({ d, i });
       });
-      const riverHtml = rows.map((row) => `<div class="river-row">${row.map(({ d }) =>
-        tileHtml(d.id, {
-          sideways: d.riichi || (p.riichi && !d.riichi && false),
-          cls: [d.called ? 'dim' : '', d.id === this.lastDiscardId && !d.called ? 'last' : ''].join(' '),
-        })).join('')}</div>`).join('');
+      const riverHtml = rows
+        .map(
+          (row) =>
+            `<div class="river-row">${row
+              .map(({ d }) =>
+                tileHtml(d.id, {
+                  sideways: d.riichi || (p.riichi && !d.riichi && false),
+                  cls: [d.called ? 'dim' : '', d.id === this.lastDiscardId && !d.called ? 'last' : ''].join(' '),
+                }),
+              )
+              .join('')}</div>`,
+        )
+        .join('');
       let area = '';
       if (rel !== 0) {
-        const hand = (reveal || this.settings.debugOpen) ? sortIds(p.hand).map((id) => tileHtml(id, { cls: 'small' })).join('')
-          : p.hand.map(() => tileHtml(null, { back: true, cls: 'small' })).join('');
+        const hand =
+          reveal || this.settings.debugOpen
+            ? sortIds(p.hand)
+                .map((id) => tileHtml(id, { cls: 'small' }))
+                .join('')
+            : p.hand.map(() => tileHtml(null, { back: true, cls: 'small' })).join('');
         const melds = p.melds.map((m) => meldHtml(m, seat, 'small')).join('');
         area = `<div class="opp-area"><div class="opp-hand">${hand}</div><div class="melds">${melds}</div></div>`;
       }
@@ -297,8 +336,12 @@ export class UI {
     const cell = (id, extra = '') => {
       const k = kindOf(id);
       const ok = allowed(id);
-      const cls = [extra, ok ? 'ok' : (pend ? 'ng' : ''), this.selected === id ? 'selected' : '',
-        pend && this.settings.assistReco && an.recoId !== undefined && kindOf(an.recoId) === k && !this.riichiMode ? 'reco' : ''].join(' ');
+      const cls = [
+        extra,
+        ok ? 'ok' : pend ? 'ng' : '',
+        this.selected === id ? 'selected' : '',
+        pend && this.settings.assistReco && an.recoId !== undefined && kindOf(an.recoId) === k && !this.riichiMode ? 'reco' : '',
+      ].join(' ');
       let badge = '<span class="badge empty">-</span>';
       if (showDanger) {
         const d = an.danger[k];
@@ -309,13 +352,20 @@ export class UI {
       return `<div class="tile-cell">${tileHtml(id, { cls, attrs: `data-id="${id}"` })}${badge}</div>`;
     };
     const handHtml = ids.map((id) => cell(id)).join('') + (drawn !== null ? cell(drawn, 'drawn') : '');
-    const meldsHtml = p.melds.slice().reverse().map((m) => meldHtml(m, 0)).join('');
+    const meldsHtml = p.melds
+      .slice()
+      .reverse()
+      .map((m) => meldHtml(m, 0))
+      .join('');
     this.handRow.innerHTML = `<div class="my-hand ${pend ? 'can-discard' : ''}">${handHtml}</div><div class="melds my-melds">${meldsHtml}</div>`;
   }
 
   renderAssist() {
     const g = this.game;
-    if (!g || !g.players) { this.assist.innerHTML = ''; return; }
+    if (!g || !g.players) {
+      this.assist.innerHTML = '';
+      return;
+    }
     const an = this.myAnalysis();
     const parts = [];
     const p = g.players[0];
@@ -329,10 +379,12 @@ export class UI {
       const k = this.hoverKind;
       const c = an.byKind && an.byKind[k];
       let s = `<span class="inl">${kindsHtml([k])}</span>`;
-      if (c && this.settings.assistShanten) s += ` 切ると ${c.shanten <= 0 ? '聴牌' : c.shanten + '向聴'} · 有効牌 ${c.shanten === 0 && c.waitInfo ? c.waitInfo.left : c.ukeire}枚`;
+      if (c && this.settings.assistShanten)
+        s += ` 切ると ${c.shanten <= 0 ? '聴牌' : c.shanten + '向聴'} · 有効牌 ${c.shanten === 0 && c.waitInfo ? c.waitInfo.left : c.ukeire}枚`;
       if (this.settings.assistDanger && an.anyThreat) {
         const d = an.danger[k];
-        if (d && d.worst) s += ` · <b>${DANGER_LABEL[dangerLevel(d.pct)]}</b> ${REL_NAMES[d.worst.target]}に${d.worst.reason} (放銃率目安 ${d.worst.pct.toFixed(1)}%)`;
+        if (d && d.worst)
+          s += ` · <b>${DANGER_LABEL[dangerLevel(d.pct)]}</b> ${REL_NAMES[d.worst.target]}に${d.worst.reason} (放銃率目安 ${d.worst.pct.toFixed(1)}%)`;
         else if (d) s += ' · <b>安全</b>';
       }
       parts.push(s);
@@ -352,9 +404,11 @@ export class UI {
       if (this.riichiMode) parts.push('<span class="warn">リーチ: 切る牌を選んでください</span>');
     } else if (this.settings.assistShanten && an.shanten13 !== undefined) {
       if (an.shanten13 === 0) {
-        const w = an.waits.map((k, i) => `${tileHtml(null, { kind: k })}`).join('');
+        const w = an.waits.map((k) => `${tileHtml(null, { kind: k })}`).join('');
         const left = an.waitLeft.reduce((a, b) => a + b, 0);
-        parts.push(`聴牌 待ち <span class="inl">${w}</span> 残り${left}枚${an.furiten ? ' <span class="bad">フリテン(ロン不可・ツモのみ)</span>' : ''}`);
+        parts.push(
+          `聴牌 待ち <span class="inl">${w}</span> 残り${left}枚${an.furiten ? ' <span class="bad">フリテン(ロン不可・ツモのみ)</span>' : ''}`,
+        );
       } else {
         parts.push(`${an.shanten13}向聴`);
       }
@@ -364,20 +418,37 @@ export class UI {
 
   renderActions() {
     const pend = this.pending;
-    if (!pend) { this.actions.innerHTML = ''; return; }
+    if (!pend) {
+      this.actions.innerHTML = '';
+      return;
+    }
     const b = [];
     if (pend.type === 'self') {
       const o = pend.opts;
       if (o.tsumo) b.push(`<button class="btn win" data-a="tsumo">ツモ</button>`);
       if (o.riichi.length && !this.game.players[0].riichi) {
-        b.push(this.riichiMode ? `<button class="btn ghost" data-a="riichi-cancel">リーチ取消</button>` : `<button class="btn primary" data-a="riichi">リーチ</button>`);
+        b.push(
+          this.riichiMode
+            ? `<button class="btn ghost" data-a="riichi-cancel">リーチ取消</button>`
+            : `<button class="btn primary" data-a="riichi">リーチ</button>`,
+        );
       }
-      o.kans.forEach((kn, i) => b.push(`<button class="btn call" data-a="kan" data-i="${i}">${kn.type === 'ankan' ? '暗槓' : '加槓'}<span class="opt-tiles">${kindsHtml([kn.k])}</span></button>`));
+      o.kans.forEach((kn, i) =>
+        b.push(
+          `<button class="btn call" data-a="kan" data-i="${i}">${kn.type === 'ankan' ? '暗槓' : '加槓'}<span class="opt-tiles">${kindsHtml([kn.k])}</span></button>`,
+        ),
+      );
       if (o.kyuushu) b.push(`<button class="btn ghost" data-a="kyuushu">九種九牌</button>`);
     } else {
       const o = pend.opts;
       if (o.ron) b.push(`<button class="btn win" data-a="ron">ロン</button>`);
-      o.chi.forEach((ids, i) => b.push(`<button class="btn call" data-a="chi" data-i="${i}">チー<span class="opt-tiles">${sortIds([...ids, pend.tile]).map((id) => tileHtml(id)).join('')}</span></button>`));
+      o.chi.forEach((ids, i) =>
+        b.push(
+          `<button class="btn call" data-a="chi" data-i="${i}">チー<span class="opt-tiles">${sortIds([...ids, pend.tile])
+            .map((id) => tileHtml(id))
+            .join('')}</span></button>`,
+        ),
+      );
       o.pon.forEach((ids, i) => b.push(`<button class="btn call" data-a="pon" data-i="${i}">ポン</button>`));
       if (o.minkan) b.push(`<button class="btn call" data-a="minkan">カン</button>`);
       b.push(`<button class="btn ghost" data-a="pass">スキップ</button>`);
@@ -397,8 +468,15 @@ export class UI {
       if (a === 'tsumo') return this.resolve({ type: 'tsumo' });
       if (a === 'kyuushu') return this.resolve({ type: 'kyuushu' });
       if (a === 'kan') return this.resolve({ type: 'kan', ...pend.opts.kans[i] });
-      if (a === 'riichi') { this.riichiMode = true; this.selected = null; return this.render(); }
-      if (a === 'riichi-cancel') { this.riichiMode = false; return this.render(); }
+      if (a === 'riichi') {
+        this.riichiMode = true;
+        this.selected = null;
+        return this.render();
+      }
+      if (a === 'riichi-cancel') {
+        this.riichiMode = false;
+        return this.render();
+      }
     } else {
       if (a === 'ron') return this.resolve({ type: 'ron' });
       if (a === 'pass') return this.resolve({ type: 'pass' });
@@ -458,11 +536,19 @@ export class UI {
     this.modal.classList.remove('hidden');
     return this.modal.querySelector('.sheet');
   }
-  closeModal() { this.modal.classList.add('hidden'); this.modal.innerHTML = ''; }
+  closeModal() {
+    this.modal.classList.add('hidden');
+    this.modal.innerHTML = '';
+  }
 
   waitButton(sheet, sel = '[data-close]') {
     return new Promise((resolve) => {
-      sheet.querySelectorAll(sel).forEach((b) => b.addEventListener('click', () => { this.closeModal(); resolve(b.dataset.close); }));
+      sheet.querySelectorAll(sel).forEach((b) =>
+        b.addEventListener('click', () => {
+          this.closeModal();
+          resolve(b.dataset.close);
+        }),
+      );
     });
   }
 
@@ -472,7 +558,11 @@ export class UI {
   }
 
   handGroupsHtml(handIds, melds, seat, winId) {
-    const groups = [`<div class="group">${sortIds(handIds).map((id) => tileHtml(id)).join('')}${winId !== undefined ? tileHtml(winId, { cls: 'win-tile' }) : ''}</div>`];
+    const groups = [
+      `<div class="group">${sortIds(handIds)
+        .map((id) => tileHtml(id))
+        .join('')}${winId !== undefined ? tileHtml(winId, { cls: 'win-tile' }) : ''}</div>`,
+    ];
     for (const m of melds) groups.push(`<div class="group">${meldHtml(m, seat)}</div>`);
     return `<div class="result-hand">${groups.join('')}</div>`;
   }
@@ -484,8 +574,10 @@ export class UI {
       const res = w.result;
       const who = g.names[w.seat];
       const how = w.tsumo ? 'ツモ' : `ロン (${g.names[w.from]}から)`;
-      const rows = res.yaku.map((y) => `<tr><td>${y.name}</td><td>${y.yakuman ? (y.han > 1 ? 'ダブル役満' : '役満') : y.han + '翻'}</td></tr>`).join('') +
-        res.dora.map((y) => `<tr><td>${y.name}</td><td>${y.han}翻</td></tr>`).join('');
+      const rows =
+        res.yaku
+          .map((y) => `<tr><td>${y.name}</td><td>${y.yakuman ? (y.han > 1 ? 'ダブル役満' : '役満') : y.han + '翻'}</td></tr>`)
+          .join('') + res.dora.map((y) => `<tr><td>${y.name}</td><td>${y.han}翻</td></tr>`).join('');
       const pts = w.tsumo ? (res.pay.all ? `${res.pay.all}オール` : `${res.pay.nonDealer}・${res.pay.dealer}`) : `${res.pay.ron}`;
       const label = res.yakuman ? res.limit : `${res.fu}符 ${res.han}翻${res.limit ? ' ' + res.limit : ''}`;
       html += `<h2>${who} ${how}</h2>
@@ -517,18 +609,27 @@ export class UI {
   }
 
   async showFinal(ranking) {
-    const html = `<h2>対局終了</h2><div class="rank-list">${ranking.map((r) =>
-      `<div class="${r.seat === 0 ? 'me-row' : ''}"><span>${r.rank}位 ${r.name}</span><b>${r.score}</b></div>`).join('')}</div>
+    const html = `<h2>対局終了</h2><div class="rank-list">${ranking
+      .map((r) => `<div class="${r.seat === 0 ? 'me-row' : ''}"><span>${r.rank}位 ${r.name}</span><b>${r.score}</b></div>`)
+      .join('')}</div>
       <div class="foot"><button class="btn primary" data-close="new">もう一度</button></div>`;
     const v = await this.waitButton(this.openModal(html));
     if (v === 'new') this.showSettings(true);
   }
 
   showYakuList() {
-    const cats = [[1, '1翻'], [2, '2翻'], [3, '3翻'], [6, '6翻'], [13, '役満']];
+    const cats = [
+      [1, '1翻'],
+      [2, '2翻'],
+      [3, '3翻'],
+      [6, '6翻'],
+      [13, '役満'],
+    ];
     const card = (y) => {
-      const hn = y.cat === 13 ? (y.han > 13 ? 'ダブル役満' : '役満') + (y.open === null ? ' · 門前のみ' : '')
-        : `${y.han}翻` + (y.open === null ? ' · 門前のみ' : y.open < y.han ? ` · 鳴き${y.open}翻` : ' · 鳴きOK');
+      const hn =
+        y.cat === 13
+          ? (y.han > 13 ? 'ダブル役満' : '役満') + (y.open === null ? ' · 門前のみ' : '')
+          : `${y.han}翻` + (y.open === null ? ' · 門前のみ' : y.open < y.han ? ` · 鳴き${y.open}翻` : ' · 鳴きOK');
       const ex = y.ex ? `<div class="ex">${kindsHtml(parseKinds(y.ex))}</div>` : '';
       return `<div class="yaku-card" data-s="${y.name}${y.read}${y.desc}"><div class="hd"><span><span class="nm">${y.name}</span><span class="rd">${y.read}</span></span><span class="hn">${hn}</span></div>
         <div class="ds">${y.desc}</div>${ex}${y.tip ? `<div class="tp">💡 ${y.tip}</div>` : ''}</div>`;
@@ -536,7 +637,9 @@ export class UI {
     let html = `<h2>役一覧</h2><input class="search" placeholder="検索 (例: タンヤオ、鳴き)" aria-label="役を検索">
       <p>${DORA_NOTE} 和了るには役が最低1つ必要です。</p>`;
     for (const [c, label] of cats) {
-      html += `<h3>${label}</h3><div class="yaku-grid">${YAKU_LIST.filter((y) => y.cat === c).map(card).join('')}</div>`;
+      html += `<h3>${label}</h3><div class="yaku-grid">${YAKU_LIST.filter((y) => y.cat === c)
+        .map(card)
+        .join('')}</div>`;
     }
     html += `<h3>点数の目安 (子 / 親・ロン)</h3>
       <table class="yaku-table"><tr><td>1翻30符</td><td>1000 / 1500</td></tr><tr><td>2翻30符</td><td>2000 / 2900</td></tr>
@@ -548,7 +651,9 @@ export class UI {
     sheet.querySelector('[data-x]').onclick = () => this.closeModal();
     sheet.querySelector('.search').oninput = (e) => {
       const q = e.target.value.trim();
-      sheet.querySelectorAll('.yaku-card').forEach((c) => { c.style.display = !q || c.dataset.s.includes(q) ? '' : 'none'; });
+      sheet.querySelectorAll('.yaku-card').forEach((c) => {
+        c.style.display = !q || c.dataset.s.includes(q) ? '' : 'none';
+      });
     };
   }
 
@@ -573,12 +678,24 @@ export class UI {
 
   showSettings(isStart) {
     const s = { ...this.settings };
-    const seg = (key, opts) => `<div class="seg" data-key="${key}">${opts.map(([v, l]) => `<button data-v="${v}" class="${s[key] === v ? 'on' : ''}">${l}</button>`).join('')}</div>`;
-    const chk = (key, label) => `<label class="check"><input type="checkbox" data-key="${key}" ${s[key] ? 'checked' : ''}> ${label}</label>`;
+    const seg = (key, opts) =>
+      `<div class="seg" data-key="${key}">${opts.map(([v, l]) => `<button data-v="${v}" class="${s[key] === v ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+    const chk = (key, label) =>
+      `<label class="check"><input type="checkbox" data-key="${key}" ${s[key] ? 'checked' : ''}> ${label}</label>`;
     const html = `<h2>${isStart ? '対局の設定' : '設定'}</h2>
-      <div class="field"><label>CPU の強さ</label>${seg('level', Object.entries(LEVELS).map(([k, v]) => [k, v.label]))}</div>
-      <div class="field"><label>対局の長さ</label>${seg('length', [['tonpuu', '東風戦'], ['hanchan', '半荘戦']])}</div>
-      <div class="field"><label>進行スピード</label>${seg('speed', [['slow', 'ゆっくり'], ['normal', 'ふつう'], ['fast', 'はやい']])}</div>
+      <div class="field"><label>CPU の強さ</label>${seg(
+        'level',
+        Object.entries(LEVELS).map(([k, v]) => [k, v.label]),
+      )}</div>
+      <div class="field"><label>対局の長さ</label>${seg('length', [
+        ['tonpuu', '東風戦'],
+        ['hanchan', '半荘戦'],
+      ])}</div>
+      <div class="field"><label>進行スピード</label>${seg('speed', [
+        ['slow', 'ゆっくり'],
+        ['normal', 'ふつう'],
+        ['fast', 'はやい'],
+      ])}</div>
       <div class="field"><label>アシスト</label>
         ${chk('assistShanten', 'シャンテン数・待ちを表示')}
         ${chk('assistReco', 'おすすめの打牌を光らせる')}
@@ -588,28 +705,56 @@ export class UI {
       <p>ルール: 4人打ち・赤ドラ3枚・喰いタンあり・後付けあり・25000点持ち30000点返し・トビあり。</p>
       <div class="foot">${isStart ? '' : '<button class="btn ghost" data-x>閉じる</button>'}<button class="btn ${isStart ? 'primary' : 'ghost'}" data-new>${isStart ? '対局開始' : '新しい対局を始める'}</button>${isStart ? '' : '<button class="btn primary" data-save>保存</button>'}</div>`;
     const sheet = this.openModal(html);
-    sheet.querySelectorAll('.seg').forEach((el) => el.addEventListener('click', (e) => {
-      const b = e.target.closest('button'); if (!b) return;
-      s[el.dataset.key] = b.dataset.v;
-      el.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
-    }));
-    sheet.querySelectorAll('input[type=checkbox]').forEach((el) => el.addEventListener('change', () => { s[el.dataset.key] = el.checked; }));
-    const apply = () => { Object.assign(this.settings, s); this.saveSettings(); this._an = null; if (this.game) this.render(); };
-    sheet.querySelector('[data-new]').onclick = () => { apply(); this.closeModal(); this.onNewGame(); };
+    sheet.querySelectorAll('.seg').forEach((el) =>
+      el.addEventListener('click', (e) => {
+        const b = e.target.closest('button');
+        if (!b) return;
+        s[el.dataset.key] = b.dataset.v;
+        el.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
+      }),
+    );
+    sheet.querySelectorAll('input[type=checkbox]').forEach((el) =>
+      el.addEventListener('change', () => {
+        s[el.dataset.key] = el.checked;
+      }),
+    );
+    const apply = () => {
+      Object.assign(this.settings, s);
+      this.saveSettings();
+      this._an = null;
+      if (this.game) this.render();
+    };
+    sheet.querySelector('[data-new]').onclick = () => {
+      apply();
+      this.closeModal();
+      this.onNewGame();
+    };
     const save = sheet.querySelector('[data-save]');
-    if (save) save.onclick = () => { apply(); this.closeModal(); };
+    if (save)
+      save.onclick = () => {
+        apply();
+        this.closeModal();
+      };
     const x = sheet.querySelector('[data-x]');
     if (x) x.onclick = () => this.closeModal();
   }
 
   saveSettings() {
-    try { localStorage.setItem('hangon.settings', JSON.stringify(this.settings)); } catch (e) { /* ignore */ }
+    try {
+      localStorage.setItem('hangon.settings', JSON.stringify(this.settings));
+    } catch {
+      /* ignore */
+    }
   }
 }
 
 export class HumanAgent {
-  constructor(ui) { this.ui = ui; }
-  selfAction(game, seat, opts) { return this.ui.promptSelf(opts); }
+  constructor(ui) {
+    this.ui = ui;
+  }
+  selfAction(game, seat, opts) {
+    return this.ui.promptSelf(opts);
+  }
   respond(game, seat, tile, from, opts) {
     if (this.ui.settings.noCalls && !opts.ron) return Promise.resolve({ type: 'pass' });
     return this.ui.promptCall(tile, from, opts);

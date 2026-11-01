@@ -5,9 +5,7 @@
 //         シャンテン数に応じて押し引きの重みを変える
 // - 鳴き: 役 (役牌・断幺九・染め・対々) の見込みがあり前進する場合のみ
 
-import {
-  kindOf, isRed, isHonor, isDragon, isYaochu, isSimple, suitOf, numOf, doraFromIndicator, idsToCounts,
-} from './tile.js';
+import { kindOf, isRed, isHonor, isDragon, isYaochu, isSimple, suitOf, numOf, doraFromIndicator, idsToCounts } from './tile.js';
 import { shanten, ukeire, waits } from './shanten.js';
 import { evaluate } from './yaku.js';
 import { combinedDanger, threatLevel } from './danger.js';
@@ -58,14 +56,24 @@ export function analyzeDiscards(game, seat, { lookahead = false, forbidden = [] 
       quality = uk.total + 0.35 * tenpaiQuality(counts, mc, remaining, uk.tiles);
     }
     counts[k]++;
-    out.push({ id, k, shanten: s, ukeire: uk.total, ukTiles: uk.tiles, quality, waitInfo, value: tileKeepValue(game, seat, p, counts, k, id, doras) });
+    out.push({
+      id,
+      k,
+      shanten: s,
+      ukeire: uk.total,
+      ukTiles: uk.tiles,
+      quality,
+      waitInfo,
+      value: tileKeepValue(game, seat, p, counts, k, id, doras),
+    });
   }
   return out;
 }
 
 // 一向聴から各有効牌を引いた時の最良聴牌の待ち枚数の加重平均
 function tenpaiQuality(counts, mc, remaining, ukTiles) {
-  let sum = 0, weight = 0;
+  let sum = 0,
+    weight = 0;
   for (const d of ukTiles) {
     const r = remaining[d];
     if (r <= 0) continue;
@@ -130,7 +138,11 @@ function yakuPath(game, seat, counts, melds) {
   // counts: 鳴き後の手牌, melds: [{type,k}]
   const all = counts.slice();
   for (const m of melds) {
-    if (m.type === 'chi') { all[m.k]++; all[m.k + 1]++; all[m.k + 2]++; } else all[m.k] += 3;
+    if (m.type === 'chi') {
+      all[m.k]++;
+      all[m.k + 1]++;
+      all[m.k + 2]++;
+    } else all[m.k] += 3;
   }
   // 役牌刻子 (確定) / 役牌対子 (見込み)
   for (let k = 27; k < 34; k++) {
@@ -139,7 +151,7 @@ function yakuPath(game, seat, counts, melds) {
     if (counts[k] >= 2) return 'yakuhai-pair';
   }
   // 断幺九: 副露がすべて中張牌で、手牌の幺九牌が 2 枚以下
-  if (melds.every((m) => m.type === 'chi' ? (numOf(m.k) >= 2 && numOf(m.k) <= 6) : isSimple(m.k))) {
+  if (melds.every((m) => (m.type === 'chi' ? numOf(m.k) >= 2 && numOf(m.k) <= 6 : isSimple(m.k)))) {
     let y = 0;
     for (let k = 0; k < 34; k++) if (isYaochu(k)) y += counts[k];
     if (y <= 2) return 'tanyao';
@@ -165,10 +177,19 @@ function hasYakuOnWaits(game, seat, counts, waitKinds) {
   const p = game.players[seat];
   if (game.isMenzen(p)) return true;
   for (const w of waitKinds) {
-    const c = counts.slice(); c[w]++;
+    const c = counts.slice();
+    c[w]++;
     const r = evaluate({
-      hand: c, melds: p.melds.map((m) => ({ type: m.type, k: m.k })), winTile: w, isTsumo: false,
-      seatWind: game.seatWind(seat), roundWind: game.roundWindKind, doraIndicators: [], uraIndicators: [], allIds: [], isDealer: false,
+      hand: c,
+      melds: p.melds.map((m) => ({ type: m.type, k: m.k })),
+      winTile: w,
+      isTsumo: false,
+      seatWind: game.seatWind(seat),
+      roundWind: game.roundWindKind,
+      doraIndicators: [],
+      uraIndicators: [],
+      allIds: [],
+      isDealer: false,
     });
     if (r) return true;
   }
@@ -202,7 +223,7 @@ export function chooseDiscard(game, seat, level, forbidden = []) {
   let threatSum = 0;
   for (let i = 1; i < 4; i++) {
     const t = (seat + i) % 4;
-    const th = L.defense >= 2 ? threatLevel(game, seat, t) : (game.players[t].riichi ? 1 : 0);
+    const th = L.defense >= 2 ? threatLevel(game, seat, t) : game.players[t].riichi ? 1 : 0;
     if (th >= 0.3) threatSum += th;
   }
   const bestEff = cands.filter((c) => c.shanten === minS).sort((a, b) => b.quality - a.quality)[0];
@@ -212,7 +233,8 @@ export function chooseDiscard(game, seat, level, forbidden = []) {
     let score = -c.shanten * 100 + c.quality - c.value * 2;
     // 鳴き手で役が無くなる聴牌は低評価
     if (c.shanten === 0 && c.waitInfo && !game.isMenzen(p)) {
-      const counts = idsToCounts(p.hand); counts[c.k]--;
+      const counts = idsToCounts(p.hand);
+      counts[c.k]--;
       if (!hasYakuOnWaits(game, seat, counts, c.waitInfo.kinds)) score -= 60;
     }
     if (W > 0) {
@@ -225,7 +247,7 @@ export function chooseDiscard(game, seat, level, forbidden = []) {
           const t = (seat + i) % 4;
           if (!game.players[t].riichi) continue;
           const safe = game.players[t].discards.some((d) => kindOf(d.id) === c.k);
-          risk += safe ? 0 : (isHonor(c.k) ? 4 : 9);
+          risk += safe ? 0 : isHonor(c.k) ? 4 : 9;
         }
       }
       c.risk = risk;
@@ -286,10 +308,15 @@ export class CpuAgent {
     let before = 99;
     for (let k = 0; k < 34; k++) {
       if (!counts[k]) continue;
-      counts[k]--; before = Math.min(before, shanten(counts, mc)); counts[k]++;
+      counts[k]--;
+      before = Math.min(before, shanten(counts, mc));
+      counts[k]++;
     }
     const c2 = counts.slice();
-    if (kan.type === 'ankan') { c2[kan.k] -= 4; return shanten(c2, mc + 1) <= before; }
+    if (kan.type === 'ankan') {
+      c2[kan.k] -= 4;
+      return shanten(c2, mc + 1) <= before;
+    }
     c2[kan.k] -= 1;
     return shanten(c2, mc) <= before;
   }
@@ -313,7 +340,9 @@ export class CpuAgent {
       let after = 99;
       for (let x = 0; x < 34; x++) {
         if (!c[x]) continue;
-        c[x]--; after = Math.min(after, shanten(c, mc + 1)); c[x]++;
+        c[x]--;
+        after = Math.min(after, shanten(c, mc + 1));
+        c[x]++;
       }
       if (after >= cur) return;
       const path = yakuPath(game, seat, c, melds);

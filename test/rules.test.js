@@ -1,8 +1,8 @@
 import { parseKinds, toCounts, EAST, SOUTH } from '../js/tile.js';
 import { shanten, waits } from '../js/shanten.js';
 import { evaluate } from '../js/yaku.js';
-let fail = 0, pass = 0;
-const eq = (name, a, b) => { const ok = JSON.stringify(a) === JSON.stringify(b); ok ? pass++ : (fail++, console.log('FAIL', name, 'got', JSON.stringify(a), 'want', JSON.stringify(b))); };
+import { test, expect } from 'vite-plus/test';
+const eq = (name, a, b) => test(name, () => expect(a).toEqual(b));
 const c = (s) => toCounts(parseKinds(s));
 // shanten
 eq('agari', shanten(c('123m456p789s11122z')), -1);
@@ -12,40 +12,68 @@ eq('kokushi', shanten(c('19m19p19s1234567z')), 0);
 eq('kokushi1', shanten(c('19m19p19s123456z5m')), 1);
 eq('random', shanten(c('147m258p369s1234z')), 6);
 eq('iishanten', shanten(c('123m456p78s11z35p9m')), 1);
-eq('waits nobetan', waits(c('2345m'), 3), [1,4]);
+eq('waits nobetan', waits(c('2345m'), 3), [1, 4]);
 eq('waits chuuren', waits(c('1112345678999m')).length, 9);
 eq('meld shanten', shanten(c('1234m'), 3), 0);
 // yaku
-const base = { melds: [], isTsumo: false, seatWind: SOUTH, roundWind: EAST, doraIndicators: [], uraIndicators: [], allIds: [], isDealer: false };
-const ev = (s, win, o={}) => evaluate({ ...base, hand: c(s), winTile: parseKinds(win)[0], ...o });
+const base = {
+  melds: [],
+  isTsumo: false,
+  seatWind: SOUTH,
+  roundWind: EAST,
+  doraIndicators: [],
+  uraIndicators: [],
+  allIds: [],
+  isDealer: false,
+};
+const ev = (s, win, o = {}) => evaluate({ ...base, hand: c(s), winTile: parseKinds(win)[0], ...o });
 let r = ev('234m456p678s22345s', '5s');
 eq('pinfu tanyao ron', [r.han, r.fu, r.total], [2, 30, 2000]);
 r = ev('234m456p678s22345s', '5s', { isTsumo: true });
 eq('pinfu tsumo', [r.han, r.fu, r.pay], [3, 20, { dealer: 1300, nonDealer: 700 }]);
 r = ev('123m456p789s22233z', '2z');
-eq('south seat', r && r.yaku.map(y=>y.name), ['自風 南']);
+eq('south seat', r && r.yaku.map((y) => y.name), ['自風 南']);
 r = ev('123m456p789s44433z', '3z');
 eq('no yaku', r, null);
 r = ev('11223344556677z', '7z');
 eq('tsuuiisou chiitoi', r.yakuman, 1);
 r = ev('19m19p19s12345677z', '7z');
 eq('kokushi13', r.yakuman, 2);
-r = ev('19m19p19s12345677z', '1z'); eq('kokushi', r.yakuman, 1);
-r = ev('11112345678999m', '1m', {isTsumo:true});
+r = ev('19m19p19s12345677z', '1z');
+eq('kokushi', r.yakuman, 1);
+r = ev('11112345678999m', '1m', { isTsumo: true });
 eq('junsei? no (extra=1 win=1) junsei', r.yaku[0].name.includes('九蓮'), true);
 r = ev('111m222p333s44455z', '5z', { isTsumo: true });
 eq('suuankou tanki', r.yakuman, 2);
 r = ev('111m222p333s44455z', '4z', { isTsumo: false });
-eq('sanankou toitoi', r.yaku.map(y=>y.name).sort(), ['三暗刻','対々和'].sort());
+eq('sanankou toitoi', r.yaku.map((y) => y.name).sort(), ['三暗刻', '対々和'].sort());
 r = ev('123456789m11p789s', '9m', { riichi: true });
-eq('ittsu riichi', r.yaku.map(y=>y.name), ['立直','平和','一気通貫']);
+eq(
+  'ittsu riichi',
+  r.yaku.map((y) => y.name),
+  ['立直', '平和', '一気通貫'],
+);
 r = ev('112233m456p78999s', '9s');
-eq('iipeikou', r.yaku.map(y=>y.name), ['平和','一盃口']);
-r = ev('234567m22m', '7m', { melds: [{type:'pon', k: 31}, {type:'chi', k: 1}] });
+eq(
+  'iipeikou',
+  r.yaku.map((y) => y.name),
+  ['平和', '一盃口'],
+);
+r = ev('234567m22m', '7m', {
+  melds: [
+    { type: 'pon', k: 31 },
+    { type: 'chi', k: 1 },
+  ],
+});
 eq('honitsu yakuhai open', [r.han, r.fu].join(), '3,30');
-r = ev('22m', '2m', { melds: [{type:'chi',k:2},{type:'pon',k:13},{type:'chi',k:20},{type:'chi',k:3}] });
-eq('kuitan 30fu', [r.han,r.fu,r.total].join(), '1,30,1000');
-r = ev('123m123p123s99m789p', '8p', {isDealer:true});
+r = ev('22m', '2m', {
+  melds: [
+    { type: 'chi', k: 2 },
+    { type: 'pon', k: 13 },
+    { type: 'chi', k: 20 },
+    { type: 'chi', k: 3 },
+  ],
+});
+eq('kuitan 30fu', [r.han, r.fu, r.total].join(), '1,30,1000');
+r = ev('123m123p123s99m789p', '8p', { isDealer: true });
 eq('junchan sanshoku menzen kanchan', [r.han, r.fu, r.total].join(), '5,40,12000');
-console.log(`${pass} passed, ${fail} failed`);
-process.exit(fail ? 1 : 0);

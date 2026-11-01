@@ -1,7 +1,5 @@
 // 対局進行エンジン
-import {
-  kindOf, isRed, isYaochu, isWind, idsToCounts, shuffle, EAST, suitOf, numOf, isHonor,
-} from './tile.js';
+import { kindOf, isRed, isYaochu, isWind, idsToCounts, shuffle, EAST, suitOf, numOf, isHonor } from './tile.js';
 import { shanten, waits } from './shanten.js';
 import { evaluate } from './yaku.js';
 
@@ -29,11 +27,21 @@ export class Game {
     if (this.ui) await this.ui.event(type, data, this);
   }
 
-  get dealer() { return (this.firstDealer + this.kyoku) % 4; }
-  seatWind(seat) { return EAST + ((seat - this.dealer + 4) % 4); }
-  get roundWindKind() { return EAST + this.roundWind; }
-  get wallRemaining() { return this.live.length; }
-  roundLabel() { return `${'東南西北'[this.roundWind]}${this.kyoku + 1}局`; }
+  get dealer() {
+    return (this.firstDealer + this.kyoku) % 4;
+  }
+  seatWind(seat) {
+    return EAST + ((seat - this.dealer + 4) % 4);
+  }
+  get roundWindKind() {
+    return EAST + this.roundWind;
+  }
+  get wallRemaining() {
+    return this.live.length;
+  }
+  roundLabel() {
+    return `${'東南西北'[this.roundWind]}${this.kyoku + 1}局`;
+  }
 
   async run() {
     await this.emit('gameStart');
@@ -76,12 +84,18 @@ export class Game {
       renchan = true; // 途中流局
       this.honba++;
     }
-    if (this.scores.some((s) => s < 0)) { this.over = true; return; }
+    if (this.scores.some((s) => s < 0)) {
+      this.over = true;
+      return;
+    }
     const allLast = this.roundWind === lastWind && this.kyoku === 3;
     if (allLast && renchan && result.type !== 'abort') {
       // アガリやめ / テンパイやめ: 親がトップかつ返し点以上なら終了
       const top = this.orderBySeatScore()[0];
-      if (top === this.dealer && this.scores[this.dealer] >= this.rules.returnScore) { this.over = true; return; }
+      if (top === this.dealer && this.scores[this.dealer] >= this.rules.returnScore) {
+        this.over = true;
+        return;
+      }
     }
     if (!renchan) {
       this.kyoku++;
@@ -139,9 +153,15 @@ export class Game {
     return out;
   }
 
-  meldCount(p) { return p.melds.length; }
-  isMenzen(p) { return p.melds.every((m) => m.type === 'ankan'); }
-  counts(p) { return idsToCounts(p.hand); }
+  meldCount(p) {
+    return p.melds.length;
+  }
+  isMenzen(p) {
+    return p.melds.every((m) => m.type === 'ankan');
+  }
+  counts(p) {
+    return idsToCounts(p.hand);
+  }
 
   // 13枚 (打牌後) の待ち
   playerWaits(p) {
@@ -222,16 +242,22 @@ export class Game {
         if (p.riichi) {
           // リーチ後はツモ牌での暗槓かつ待ちが変わらない場合のみ
           if (kindOf(p.drawn) !== k) continue;
-          const before = counts.slice(); before[k]--;
+          const before = counts.slice();
+          before[k]--;
           const w0 = waits(before, p.melds.length);
-          const after = counts.slice(); after[k] -= 4;
+          const after = counts.slice();
+          after[k] -= 4;
           const w1 = waits(after, p.melds.length + 1);
           if (w0.join() !== w1.join() || w0.length === 0) continue;
           // 面子構成が変わるケース (例: 3334 の 3 暗槓) を避けるため、待ちの各牌で暗刻扱いになるか確認
           let ok = true;
           for (const w of w0) {
-            const c = before.slice(); c[w]++;
-            if (!decomposeHasTriplet(c, k)) { ok = false; break; }
+            const c = before.slice();
+            c[w]++;
+            if (!decomposeHasTriplet(c, k)) {
+              ok = false;
+              break;
+            }
           }
           if (!ok) continue;
         }
@@ -256,7 +282,7 @@ export class Game {
 
   // 公開情報から見えている枚数 (seat 視点)
   visibleCounts(seat) {
-    const c = new Array(34).fill(0);
+    const c = Array.from({ length: 34 }, () => 0);
     for (const id of this.players[seat].hand) c[kindOf(id)]++;
     for (const p of this.players) {
       for (const d of p.discards) if (!d.called) c[kindOf(d.id)]++;
@@ -370,7 +396,10 @@ export class Game {
       await this.emit('kan', { seat, type: 'kakan', k });
       const rons = await this.collectRons(seat, id, { chankan: true });
       if (rons.length) {
-        return this.resolveWin(rons.map((r) => ({ ...r, winId: id, tsumo: false })), seat);
+        return this.resolveWin(
+          rons.map((r) => ({ ...r, winId: id, tsumo: false })),
+          seat,
+        );
       }
     }
     p.kans++;
@@ -390,7 +419,10 @@ export class Game {
       const s = (fromSeat + i) % 4;
       const q = this.players[s];
       const r = this.canRon(s, tileId, opts);
-      if (r.isWait && !r.can) { this.markMissed(q); continue; }
+      if (r.isWait && !r.can) {
+        this.markMissed(q);
+        continue;
+      }
       if (!r.can) continue;
       const ans = await this.agents[s].respond(this, s, tileId, fromSeat, { ron: r.result, pon: [], minkan: null, chi: [] });
       if (ans.type === 'ron') rons.push({ seat: s, result: r.result });
@@ -450,8 +482,16 @@ export class Game {
     }
     const rons = responses.filter((r) => r.ans.type === 'ron');
     if (rons.length) {
-      if (declareRiichi) { p.riichi = false; p.doubleRiichi = false; }
-      return { end: await this.resolveWin(rons.map((r) => ({ seat: r.seat, tsumo: false, winId: id, result: r.opts.ron })), seat) };
+      if (declareRiichi) {
+        p.riichi = false;
+        p.doubleRiichi = false;
+      }
+      return {
+        end: await this.resolveWin(
+          rons.map((r) => ({ seat: r.seat, tsumo: false, winId: id, result: r.opts.ron })),
+          seat,
+        ),
+      };
     }
     if (declareRiichi) {
       this.scores[seat] -= 1000;
@@ -471,8 +511,7 @@ export class Game {
         return { end: { type: 'abort', reason: '四風連打', deltas: [0, 0, 0, 0] } };
       }
     }
-    const call = responses.find((r) => r.ans.type === 'pon' || r.ans.type === 'minkan')
-      || responses.find((r) => r.ans.type === 'chi');
+    const call = responses.find((r) => r.ans.type === 'pon' || r.ans.type === 'minkan') || responses.find((r) => r.ans.type === 'chi');
     if (call) {
       await this.doCall(call.seat, seat, id, call.ans, call.opts);
       return { call: { seat: call.seat, type: call.ans.type } };
@@ -481,13 +520,20 @@ export class Game {
   }
 
   chiOptions(q, k) {
-    const s = suitOf(k), n = numOf(k);
+    const s = suitOf(k),
+      n = numOf(k);
     const out = [];
-    const patterns = [[-2, -1], [-1, 1], [1, 2]];
+    const patterns = [
+      [-2, -1],
+      [-1, 1],
+      [1, 2],
+    ];
     for (const [a, b] of patterns) {
-      const na = n + a, nb = n + b;
+      const na = n + a,
+        nb = n + b;
       if (na < 1 || nb > 9) continue;
-      const ka = s * 9 + na - 1, kb = s * 9 + nb - 1;
+      const ka = s * 9 + na - 1,
+        kb = s * 9 + nb - 1;
       const ia = q.hand.filter((x) => kindOf(x) === ka).sort((x, y) => isRed(x) - isRed(y))[0];
       const ib = q.hand.filter((x) => kindOf(x) === kb).sort((x, y) => isRed(x) - isRed(y))[0];
       if (ia === undefined || ib === undefined) continue;
@@ -575,7 +621,11 @@ export class Game {
       for (let s = 0; s < 4; s++) deltas[s] += d[s];
       const p = this.players[w.seat];
       details.push({
-        seat: w.seat, tsumo: w.tsumo, winId: w.winId, result: r, from: fromSeat,
+        seat: w.seat,
+        tsumo: w.tsumo,
+        winId: w.winId,
+        result: r,
+        from: fromSeat,
         hand: w.tsumo ? p.hand.filter((x) => x !== w.winId) : p.hand.slice(),
         melds: p.melds.map((m) => ({ ...m, ids: m.ids.slice() })),
         dora: this.doraIndicators.slice(),
@@ -612,7 +662,8 @@ function decomposeHasTriplet(counts, k) {
   // counts (14枚) を分解して k が刻子として使われる分解が全て である場合 true
   // 簡易: k を刻子として抜いた残りで和了形になるか
   if (counts[k] < 3) return false;
-  const c = counts.slice(); c[k] -= 3;
+  const c = counts.slice();
+  c[k] -= 3;
   // 残り 11 枚が 1雀頭 + 3面子 (副露数は関係なく形だけ)
   const s = shantenLocal(c);
   return s;
@@ -633,11 +684,20 @@ function shantenLocal(c) {
 function allMentsu(c, i) {
   while (i < 34 && c[i] === 0) i++;
   if (i >= 34) return true;
-  if (c[i] >= 3) { c[i] -= 3; const ok = allMentsu(c, i); c[i] += 3; if (ok) return true; }
-  if (i < 27 && i % 9 <= 6 && c[i + 1] && c[i + 2]) {
-    c[i]--; c[i + 1]--; c[i + 2]--;
+  if (c[i] >= 3) {
+    c[i] -= 3;
     const ok = allMentsu(c, i);
-    c[i]++; c[i + 1]++; c[i + 2]++;
+    c[i] += 3;
+    if (ok) return true;
+  }
+  if (i < 27 && i % 9 <= 6 && c[i + 1] && c[i + 2]) {
+    c[i]--;
+    c[i + 1]--;
+    c[i + 2]--;
+    const ok = allMentsu(c, i);
+    c[i]++;
+    c[i + 1]++;
+    c[i + 2]++;
     if (ok) return true;
   }
   return false;

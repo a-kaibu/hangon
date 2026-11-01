@@ -3,7 +3,13 @@
 // id: 0-135 (kind*4 + copy)。copy 0 の 5 は赤ドラ。
 
 export const NUM_KINDS = 34;
-export const EAST = 27, SOUTH = 28, WEST = 29, NORTH = 30, HAKU = 31, HATSU = 32, CHUN = 33;
+export const EAST = 27,
+  SOUTH = 28,
+  WEST = 29,
+  NORTH = 30,
+  HAKU = 31,
+  HATSU = 32,
+  CHUN = 33;
 export const RED_IDS = new Set([4 * 4, 13 * 4, 22 * 4]);
 
 export const kindOf = (id) => id >> 2;
@@ -18,7 +24,7 @@ export const isYaochu = (k) => k >= 27 || k % 9 === 0 || k % 9 === 8;
 export const isSimple = (k) => !isYaochu(k);
 
 export function doraFromIndicator(k) {
-  if (k < 27) return Math.floor(k / 9) * 9 + ((k % 9) + 1) % 9;
+  if (k < 27) return Math.floor(k / 9) * 9 + (((k % 9) + 1) % 9);
   if (k < 31) return 27 + ((k - 27 + 1) % 4);
   return 31 + ((k - 31 + 1) % 3);
 }
@@ -53,13 +59,13 @@ export function parseKinds(str) {
 }
 
 export function toCounts(kinds) {
-  const c = new Array(NUM_KINDS).fill(0);
+  const c = Array.from({ length: NUM_KINDS }, () => 0);
   for (const k of kinds) c[k]++;
   return c;
 }
 
 export function idsToCounts(ids) {
-  const c = new Array(NUM_KINDS).fill(0);
+  const c = Array.from({ length: NUM_KINDS }, () => 0);
   for (const id of ids) c[id >> 2]++;
   return c;
 }
@@ -80,7 +86,8 @@ export function shuffle(arr, rng = Math.random) {
 export function makeRng(seed) {
   let a = seed >>> 0;
   return function () {
-    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
     let t = Math.imul(a ^ (a >>> 15), 1 | a);
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;

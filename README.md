@@ -1,11 +1,11 @@
 # 反魂麻雀 (hangon)
 
-ブラウザだけで遊べる 4 人打ちリーチ麻雀です。CPU 3 人と対戦します。外部ライブラリなし (素の HTML / CSS / JavaScript の ES Modules) で、GitHub Pages にそのまま置けば動きます。
+ブラウザだけで遊べる 4 人打ちリーチ麻雀です。CPU 3 人と対戦します。ゲーム本体は実行時の外部ライブラリなし (素の HTML / CSS / JavaScript)。開発ツールは [Vite+](https://viteplus.dev/) (`vp`) で、`main` への push で GitHub Actions がビルドして GitHub Pages にデプロイします。
 
 ## 遊び方
 
 - GitHub Pages: `https://a-kaibu.github.io/hangon/`
-- ローカル: `python3 -m http.server` を実行して `http://localhost:8000/` を開く (ES Modules のため `file://` では動きません)
+- ローカル: `vp install` → `vp dev`
 
 マウスはクリックで打牌、スマホは 1 回タップで選択 (情報表示)、もう 1 回で打牌です。
 
@@ -33,8 +33,14 @@ CPU 同士の対戦シミュレーション (`npm run sim`) で、点数の合�
 ## 開発
 
 ```
-npm test      # 役・符・点数・シャンテンの単体テスト + CPU 対戦 20 半荘
-npm run sim   # CPU 対戦 200 半荘の成績
+vp install    # 依存のインストール
+vp dev        # 開発サーバー
+vp check      # フォーマット + lint
+vp test       # 役・符・点数・シャンテンの単体テスト + CPU 対戦
+vp build      # dist/ に本番ビルド
+vp run sim    # CPU 対戦 200 半荘の成績
 ```
+
+デプロイは `.github/workflows/deploy.yml` (setup-vp → check → test → build → deploy-pages)。リポジトリの Settings → Pages の Source は「GitHub Actions」にしてください。
 
 URL に `?open` を付けると CPU の手牌が見えるデバッグ表示になります。
