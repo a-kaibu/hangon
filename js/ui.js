@@ -5,6 +5,7 @@ import { chooseDiscard, LEVELS } from './ai.js';
 import { combinedDanger, dangerLevel, threatLevel } from './danger.js';
 import { YAKU_LIST, DORA_NOTE } from './yakulist.js';
 import { guidePages } from './guide.js';
+import { explainReco } from './explain.js';
 import { Board3D, webglAvailable } from './board3d.js';
 
 const REL_NAMES = ['あなた', '下家', '対面', '上家'];
@@ -85,6 +86,9 @@ export class UI {
     this.handRow.addEventListener('pointerleave', () => {
       this.hoverKind = null;
       this.renderAssist();
+    });
+    this.assist.addEventListener('click', (e) => {
+      if (e.target.closest('[data-why]')) this.showWhy();
     });
     this.modal.addEventListener('click', (e) => {
       if (e.target === this.modal && this.dismiss) this.dismiss();
@@ -424,6 +428,24 @@ export class UI {
       const names = threats.map((t) => `${REL_NAMES[t.seat]}${g.players[t.seat].riichi ? 'リーチ' : '(仕掛け)'}`).join('・');
       parts.push(`<span class="warn">⚠ ${names}</span>`);
     }
+    let recoPart = '';
+    if (
+      this.pending &&
+      this.pending.type === 'self' &&
+      this.settings.assistReco &&
+      an.recoId !== undefined &&
+      !p.riichi &&
+      !this.riichiMode
+    ) {
+      let head = '';
+      try {
+        an.explain ||= explainReco(g, 0, an);
+        head = an.explain.headline;
+      } catch (e) {
+        console.error(e);
+      }
+      recoPart = `おすすめ <span class="inl">${kindsHtml([an.recoKind])}</span> <span class="why-head">${head}</span> <button class="why-btn" data-why>なぜ?</button>`;
+    }
     if (this.hoverKind !== null && this.pending && this.pending.type === 'self') {
       const k = this.hoverKind;
       const c = an.byKind && an.byKind[k];
@@ -437,19 +459,12 @@ export class UI {
         else if (d) s += ' · <b>安全</b>';
       }
       parts.push(s);
+      if (recoPart) parts.push('<br>' + recoPart);
     } else if (this.pending && this.pending.type === 'self') {
       if (this.settings.assistShanten && an.shanten !== undefined) {
         parts.push(an.shanten <= 0 ? '<span class="good">聴牌できます</span>' : `<b>${an.shanten}向聴</b>`);
       }
-      if (this.settings.assistReco && an.recoId !== undefined && !p.riichi) {
-        const c = an.byKind[an.recoKind];
-        let why = '';
-        if (c) {
-          why = c.shanten === 0 && c.waitInfo ? `待ち ${c.waitInfo.left}枚` : `有効牌 ${c.ukeire}枚`;
-          if (c.risk !== undefined && an.anyThreat) why += c.risk < 1 ? ' · 安全寄り' : '';
-        }
-        parts.push(`おすすめ <span class="inl">${kindsHtml([an.recoKind])}</span> (${why})`);
-      }
+      if (recoPart) parts.push(recoPart);
       if (this.riichiMode) parts.push('<span class="warn">リーチ: 切る牌を選んでください</span>');
       else if (this.selected === null) parts.push('牌をタップで選択、もう一度タップで切る');
     } else if (this.settings.assistShanten && an.shanten13 !== undefined) {
@@ -463,7 +478,7 @@ export class UI {
         parts.push(`${an.shanten13}向聴`);
       }
     }
-    this.assist.innerHTML = parts.join(' · ');
+    this.assist.innerHTML = `<div>${parts.join(' · ').replace(/ · <br>/g, '</div><div>')}</div>`;
   }
 
   renderActions() {
@@ -740,6 +755,29 @@ export class UI {
       draw();
     });
     draw();
+  }
+
+  showWhy() {
+    const an = this.myAnalysis();
+    if (!an.cands) return;
+    const ex = (an.explain ||= explainReco(this.game, 0, an));
+    const rows = ex.table
+      .map(
+        (
+          r,
+        ) => `<tr class="${r.best ? 'best' : ''}"><td><span class="inl">${kindsHtml([r.k])}</span>${r.best ? ' おすすめ' : ''}</td><td>${r.after}</td>
+          <td>${r.countLabel} ${r.count}枚</td><td>${r.danger ? `<span class="badge l${dangerLevel(r.danger.pct)}">${DANGER_LABEL[dangerLevel(r.danger.pct)]}</span>` : '-'}</td></tr>`,
+      )
+      .join('');
+    const html = `<h2>おすすめの理由</h2>
+      <div class="callbox"><span class="inl">${kindsHtml([ex.bestKind])}</span> <b>${ex.headline}</b></div>
+      ${ex.reasons.map((r) => `<p>${r}</p>`).join('')}
+      <h3>候補の比較</h3>
+      <table class="yaku-table why-table"><tr><td>切る牌</td><td>切った後</td><td>受け入れ</td><td>危険度</td></tr>${rows}</table>
+      <p class="note">「有効牌」は引くと手が1歩進む牌の残り枚数(自分から見えている牌を除く)。多いほど早く聴牌できます。</p>
+      <div class="foot"><button class="btn primary" data-x>閉じる</button></div>`;
+    const sheet = this.openModal(html);
+    sheet.querySelector('[data-x]').onclick = () => this.closeModal();
   }
 
   showDangerHelp() {

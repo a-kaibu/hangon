@@ -1055,3 +1055,44 @@ button {
   white-space: nowrap;
   text-overflow: clip;
 }
+
+.why-head {
+  color: var(--text);
+}
+.why-btn {
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent-2);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  margin-left: 4px;
+}
+.why-table td {
+  text-align: left !important;
+  color: var(--text) !important;
+}
+.why-table tr.best td {
+  background: rgba(92, 194, 140, 0.12);
+}
+.why-table .inl .tile,
+.callbox .inl .tile {
+  --w: 22px;
+}
+.callbox .inl,
+.why-table .inl {
+  display: inline-flex;
+  vertical-align: middle;
+}
+/* ホバーで行数が変わっても手牌がずれないよう 2 行分を確保 */
+.assist {
+  min-height: 3.2em;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  line-height: 1.6;
+}
+.assist > * {
+  line-height: 1.6;
+}
