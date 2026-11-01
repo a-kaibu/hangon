@@ -6,6 +6,8 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     target: 'es2022',
+    // Three.js を含むため
+    chunkSizeWarningLimit: 700,
   },
   test: {
     include: ['test/**/*.test.js'],

@@ -362,13 +362,11 @@ export class Board3D {
       const rel = seat;
       const p = g.players[seat];
       // 河
-      let col = 0,
-        row = 0,
+      let row = 0,
         x = -3 * TW;
       p.discards.forEach((d, i) => {
         if (i > 0 && i % 6 === 0 && row < 3) {
           row++;
-          col = 0;
           x = -3 * TW;
         }
         const side = d.riichi;
@@ -376,7 +374,6 @@ export class Board3D {
         const z = RIVER0 + row * TH + TH / 2 + (side ? (TH - TW) / 2 : 0);
         if (!d.called) place(d.id, rel, x + w / 2, z, 'flat', side ? -Math.PI / 2 : 0, { origin: this.toWorld(rel, 0, HAND_Z) });
         x += w + 0.02;
-        col++;
       });
       // 鳴き (右手前)
       let mx = TABLE - 0.7;
