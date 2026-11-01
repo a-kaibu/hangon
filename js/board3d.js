@@ -504,13 +504,14 @@ export class Board3D {
     this.camera.aspect = w / h;
     // 卓全体が収まる距離にカメラを置く (手前の自分の手牌は画面下の UI に出すので少し切る)
     // 縦長画面では卓の端を少し切って河を大きく見せる
-    const halfW = this.camera.aspect < 1 ? 9.3 : TABLE + 0.8;
+    const portrait = this.camera.aspect < 1;
+    const halfW = portrait ? 8.6 : TABLE + 0.8;
     const vfov = (this.camera.fov * Math.PI) / 180;
     const hfov = 2 * Math.atan(Math.tan(vfov / 2) * this.camera.aspect);
     const distW = halfW / Math.tan(hfov / 2);
-    const distH = ((this.camera.aspect < 1 ? 9.6 : TABLE) * 0.86) / Math.tan(vfov / 2);
+    const distH = ((portrait ? 8.6 : TABLE) * 0.86) / Math.tan(vfov / 2);
     const dist = Math.max(distW, distH);
-    const elev = (60 * Math.PI) / 180; // 見下ろし角
+    const elev = ((portrait ? 68 : 60) * Math.PI) / 180; // 見下ろし角 (縦画面は真上寄り)
     const look = new THREE.Vector3(0, 0, 0.6);
     this.camera.position.set(0, Math.sin(elev) * dist, Math.cos(elev) * dist + look.z);
     this.camera.lookAt(look);

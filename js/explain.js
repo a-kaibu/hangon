@@ -1,5 +1,7 @@
 // おすすめ打牌の理由を文章にする
 import { kindOf, isHonor, isDragon, numOf, kindName, idsToCounts, doraFromIndicator } from './tile.js';
+import { shanten as calcShanten } from './shanten.js';
+import { yakuPath, isYakuhai } from './ai.js';
 
 const SHANTEN_TEXT = (s) => (s < 0 ? '和了' : s === 0 ? '聴牌' : `${s}向聴`);
 
@@ -114,4 +116,83 @@ export function explainReco(game, seat, an) {
     best: c.k === best.k,
   }));
   return { headline, reasons, table, bestKind: best.k };
+}
+
+// ---- 鳴き・ロンの判断の説明 ----
+
+const PATH_TEXT = {
+  yakuhai: '役牌の刻子があるので役は確定',
+  'yakuhai-pair': '役牌の対子があり、役を作れる見込みがある',
+  tanyao: '2〜8だけで作るタンヤオが狙える',
+  flush: '1色に染める混一色・清一色が狙える',
+  toitoi: '刻子ばかりの対々和が狙える',
+};
+
+export function explainCall(game, seat, tileId, fromSeat, opts) {
+  const p = game.players[seat];
+  const k = kindOf(tileId);
+  const who = ['あなた', '下家', '対面', '上家'][(fromSeat - seat + 4) % 4];
+  const intro = `${who}が ${kindName(k)} を捨てました。`;
+  if (opts.ron) {
+    return { intro, rec: 'ron', text: 'この牌で和了れます！「ロン」を押しましょう。', detail: [] };
+  }
+  const counts = idsToCounts(p.hand);
+  const mc = p.melds.length;
+  const cur = calcShanten(counts, mc);
+  const meldsBase = p.melds.map((m) => ({ type: m.type, k: m.k }));
+  const threat = game.players.some((q) => q.riichi && q.seat !== seat);
+  const evals = [];
+  const tryCall = (type, ids) => {
+    const c = counts.slice();
+    for (const id of ids) c[kindOf(id)]--;
+    const start = type === 'chi' ? Math.min(k, ...ids.map(kindOf)) : k;
+    const melds = [...meldsBase, { type, k: start }];
+    let after = 99;
+    for (let x = 0; x < 34; x++) {
+      if (!c[x]) continue;
+      c[x]--;
+      after = Math.min(after, calcShanten(c, mc + 1));
+      c[x]++;
+    }
+    const path = yakuPath(game, seat, c, melds);
+    const yakuhaiPon = type === 'pon' && isHonor(k) && isYakuhai(game, seat, k);
+    let ok = true;
+    let why;
+    if (after >= cur) {
+      ok = false;
+      why = '鳴いても手が進まない';
+    } else if (!yakuhaiPon && !path) {
+      ok = false;
+      why = '鳴くと役がなくなり、和了れなくなる(リーチもできなくなる)';
+    } else if (!yakuhaiPon && after >= 3 && game.isMenzen(p)) {
+      ok = false;
+      why = 'まだ手が遠いので、鳴かずにリーチを目指した方が高くなる';
+    } else if (threat && after >= 1) {
+      ok = false;
+      why = 'リーチしている人がいるので、手牌を減らすと守りにくくなる';
+    } else {
+      why = yakuhaiPon ? '役牌なので鳴くだけで役がつく' : PATH_TEXT[path] || '手が進む';
+    }
+    evals.push({ type, ids, after, ok, why, score: (cur - after) * 10 + (yakuhaiPon ? 5 : 0) });
+  };
+  for (const ids of opts.pon) tryCall('pon', ids);
+  for (const ids of opts.chi) tryCall('chi', ids);
+  const good = evals.filter((e) => e.ok).sort((a, b) => b.score - a.score)[0];
+  const name = { pon: 'ポン', chi: 'チー' };
+  if (good) {
+    return {
+      intro,
+      rec: good.type,
+      recIds: good.ids,
+      text: `「${name[good.type]}」がおすすめ: ${good.why}。鳴くとテンパイまであと${Math.max(0, good.after)}歩になります。`,
+      detail: evals,
+    };
+  }
+  const first = evals[0];
+  return {
+    intro,
+    rec: 'pass',
+    text: `「スキップ」がおすすめ: ${first ? first.why : '鳴く理由がない'}。`,
+    detail: evals,
+  };
 }

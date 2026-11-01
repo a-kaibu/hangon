@@ -5,7 +5,7 @@ import { chooseDiscard, LEVELS } from './ai.js';
 import { combinedDanger, dangerLevel, threatLevel } from './danger.js';
 import { YAKU_LIST, DORA_NOTE } from './yakulist.js';
 import { guidePages } from './guide.js';
-import { explainReco } from './explain.js';
+import { explainReco, explainCall } from './explain.js';
 import { Board3D, webglAvailable } from './board3d.js';
 
 const REL_NAMES = ['あなた', '下家', '対面', '上家'];
@@ -420,65 +420,103 @@ export class UI {
       return;
     }
     const an = this.myAnalysis();
-    const parts = [];
     const p = g.players[0];
-    // 脅威
+    const pend = this.pending;
+    const chips = [];
+    let preview = null; // 大きく見せる牌 (kind)
+    let main = '';
+    let sub = '';
+    let why = false;
+    const plain = (s) => (s < 0 ? '和了' : s === 0 ? 'テンパイ' : `あと${s}枚でテンパイ`);
+    const dangerText = (k) => {
+      if (!this.settings.assistDanger || !an.anyThreat) return '';
+      const d = an.danger[k];
+      if (!d) return '';
+      const lv = dangerLevel(d.pct);
+      if (!d.worst) return `危険度: <b class="lv${lv}">安全</b>`;
+      return `危険度: <b class="lv${lv}">${DANGER_LABEL[lv]}</b>(${REL_NAMES[d.worst.target]}に${d.worst.reason}・約${d.worst.pct.toFixed(0)}%)`;
+    };
+
+    // 状態チップ
+    if (pend && pend.type === 'self') chips.push('<span class="chip turn">あなたの番</span>');
+    else if (pend && pend.type === 'call') chips.push('<span class="chip turn">鳴ける?</span>');
+    else chips.push('<span class="chip">相手の番</span>');
+    if (this.settings.assistShanten) {
+      const sh = an.shanten !== undefined ? an.shanten : an.shanten13;
+      if (sh !== undefined)
+        chips.push(`<span class="chip ${sh <= 0 ? 'good' : ''}">${plain(sh)}${sh > 0 ? `<small>(${sh}向聴)</small>` : ''}</span>`);
+    }
+    if (p.riichi) chips.push('<span class="chip good">リーチ中</span>');
     const threats = an.threat.filter((t) => t.level >= 0.3);
     if (threats.length && this.settings.assistDanger) {
-      const names = threats.map((t) => `${REL_NAMES[t.seat]}${g.players[t.seat].riichi ? 'リーチ' : '(仕掛け)'}`).join('・');
-      parts.push(`<span class="warn">⚠ ${names}</span>`);
+      chips.push(
+        `<span class="chip warn">⚠ ${threats.map((t) => `${REL_NAMES[t.seat]}${g.players[t.seat].riichi ? 'リーチ' : '鳴き'}`).join('・')}</span>`,
+      );
     }
-    let recoPart = '';
-    if (
-      this.pending &&
-      this.pending.type === 'self' &&
-      this.settings.assistReco &&
-      an.recoId !== undefined &&
-      !p.riichi &&
-      !this.riichiMode
-    ) {
-      let head = '';
-      try {
-        an.explain ||= explainReco(g, 0, an);
-        head = an.explain.headline;
-      } catch (e) {
-        console.error(e);
-      }
-      recoPart = `おすすめ <span class="inl">${kindsHtml([an.recoKind])}</span> <span class="why-head">${head}</span> <button class="why-btn" data-why>なぜ?</button>`;
-    }
-    if (this.hoverKind !== null && this.pending && this.pending.type === 'self') {
-      const k = this.hoverKind;
-      const c = an.byKind && an.byKind[k];
-      let s = `<span class="inl">${kindsHtml([k])}</span>`;
-      if (c && this.settings.assistShanten)
-        s += ` 切ると ${c.shanten <= 0 ? '聴牌' : c.shanten + '向聴'} · 有効牌 ${c.shanten === 0 && c.waitInfo ? c.waitInfo.left : c.ukeire}枚`;
-      if (this.settings.assistDanger && an.anyThreat) {
-        const d = an.danger[k];
-        if (d && d.worst)
-          s += ` · <b>${DANGER_LABEL[dangerLevel(d.pct)]}</b> ${REL_NAMES[d.worst.target]}に${d.worst.reason} (放銃率目安 ${d.worst.pct.toFixed(1)}%)`;
-        else if (d) s += ' · <b>安全</b>';
-      }
-      parts.push(s);
-      if (recoPart) parts.push('<br>' + recoPart);
-    } else if (this.pending && this.pending.type === 'self') {
-      if (this.settings.assistShanten && an.shanten !== undefined) {
-        parts.push(an.shanten <= 0 ? '<span class="good">聴牌できます</span>' : `<b>${an.shanten}向聴</b>`);
-      }
-      if (recoPart) parts.push(recoPart);
-      if (this.riichiMode) parts.push('<span class="warn">リーチ: 切る牌を選んでください</span>');
-      else if (this.selected === null) parts.push('牌をタップで選択、もう一度タップで切る');
-    } else if (this.settings.assistShanten && an.shanten13 !== undefined) {
-      if (an.shanten13 === 0) {
-        const w = an.waits.map((k) => `${tileHtml(null, { kind: k })}`).join('');
-        const left = an.waitLeft.reduce((a, b) => a + b, 0);
-        parts.push(
-          `聴牌 待ち <span class="inl">${w}</span> 残り${left}枚${an.furiten ? ' <span class="bad">フリテン(ロン不可・ツモのみ)</span>' : ''}`,
-        );
+
+    if (pend && pend.type === 'call') {
+      const ex = (pend.explain ||= explainCall(g, 0, pend.tile, pend.from, pend.opts));
+      preview = kindOf(pend.tile);
+      main = ex.intro;
+      sub = this.settings.assistReco || pend.opts.ron ? ex.text : 'ボタンで鳴くか、スキップを選んでください。';
+    } else if (pend && pend.type === 'self') {
+      const o = pend.opts;
+      if (o.tsumo) {
+        main = '<span class="good">ツモで和了れます！</span>「ツモ」を押しましょう。';
+        preview = p.drawn !== null ? kindOf(p.drawn) : null;
+      } else if (this.riichiMode) {
+        main = 'リーチ: 捨てる牌を選んでください';
+        sub = '明るく表示されている牌だけ選べます(捨ててもテンパイが続く牌)。';
+        if (this.settings.assistReco && an.recoKind !== undefined && o.riichi.some((id) => kindOf(id) === an.recoKind))
+          preview = an.recoKind;
+      } else if (this.selected !== null) {
+        const k = kindOf(this.selected);
+        const c = an.byKind && an.byKind[k];
+        preview = k;
+        main = `もう一度タップで <b>${kindName(k)}</b> を捨てる`;
+        const bits = [];
+        if (c && this.settings.assistShanten)
+          bits.push(`捨てると${plain(c.shanten)}・有効牌${c.shanten === 0 && c.waitInfo ? c.waitInfo.left : c.ukeire}枚`);
+        const dt = dangerText(k);
+        if (dt) bits.push(dt);
+        if (this.settings.assistReco && an.recoKind !== undefined && an.recoKind !== k)
+          bits.push(`おすすめは <b>${kindName(an.recoKind)}</b>`);
+        sub = bits.join('<br>');
+      } else if (this.settings.assistReco && an.recoKind !== undefined && !p.riichi) {
+        let head = '';
+        try {
+          an.explain ||= explainReco(g, 0, an);
+          head = an.explain.headline;
+        } catch (e) {
+          console.error(e);
+        }
+        preview = an.recoKind;
+        if (o.riichi.length) main = '<span class="good">テンパイできます！</span>「リーチ」を押してから捨てる牌を選ぶと役がつきます。';
+        else main = `おすすめ: <b>${kindName(an.recoKind)}</b> を捨てる`;
+        sub = head;
+        why = true;
       } else {
-        parts.push(`${an.shanten13}向聴`);
+        main = o.riichi.length ? 'テンパイできます！「リーチ」を押してから捨てる牌を選びましょう。' : '捨てる牌を選んでください';
       }
+      if (!o.tsumo && !this.riichiMode && this.selected === null)
+        sub += `${sub ? '<br>' : ''}<span class="hint">牌をタップで選択 → もう一度タップで捨てる</span>`;
+    } else {
+      if (p.riichi) main = 'リーチ中は自動でツモ切りします。和了れる牌が来たらボタンが出ます。';
+      else if (an.shanten13 === 0 && this.settings.assistShanten) {
+        const left = an.waitLeft.reduce((x, y) => x + y, 0);
+        main = `テンパイ中！ 待ち <span class="inl">${kindsHtml(an.waits)}</span> 残り${left}枚`;
+        if (an.furiten) sub = '<span class="bad">フリテン</span>: 待ち牌を自分で捨てているのでロンできません(ツモなら和了れる)。';
+      } else main = '相手の番です。';
     }
-    this.assist.innerHTML = `<div>${parts.join(' · ').replace(/ · <br>/g, '</div><div>')}</div>`;
+
+    this.assist.innerHTML = `<div class="coach">
+      <div class="coach-chips">${chips.join('')}</div>
+      <div class="coach-main">
+        ${preview !== null ? `<div class="coach-tile">${tileHtml(null, { kind: preview })}</div>` : ''}
+        <div class="coach-text"><div class="coach-head">${main}</div>${sub ? `<div class="coach-sub">${sub}</div>` : ''}
+        ${why ? '<button class="why-btn" data-why>なぜこの牌?</button>' : ''}</div>
+      </div>
+    </div>`;
   }
 
   renderActions() {
@@ -506,17 +544,19 @@ export class UI {
       if (o.kyuushu) b.push(`<button class="btn ghost" data-a="kyuushu">九種九牌</button>`);
     } else {
       const o = pend.opts;
-      if (o.ron) b.push(`<button class="btn win" data-a="ron">ロン</button>`);
+      const ex = this.settings.assistReco ? (pend.explain ||= explainCall(this.game, 0, pend.tile, pend.from, o)) : null;
+      const rec = (a, i = null) => (ex && ex.rec === a && (i === null || !ex.recIds || o[a]?.[i] === ex.recIds) ? ' rec' : '');
+      if (o.ron) b.push(`<button class="btn win rec" data-a="ron">ロン</button>`);
       o.chi.forEach((ids, i) =>
         b.push(
-          `<button class="btn call" data-a="chi" data-i="${i}">チー<span class="opt-tiles">${sortIds([...ids, pend.tile])
+          `<button class="btn call${rec('chi', i)}" data-a="chi" data-i="${i}">チー<span class="opt-tiles">${sortIds([...ids, pend.tile])
             .map((id) => tileHtml(id))
             .join('')}</span></button>`,
         ),
       );
-      o.pon.forEach((ids, i) => b.push(`<button class="btn call" data-a="pon" data-i="${i}">ポン</button>`));
+      o.pon.forEach((ids, i) => b.push(`<button class="btn call${rec('pon', i)}" data-a="pon" data-i="${i}">ポン</button>`));
       if (o.minkan) b.push(`<button class="btn call" data-a="minkan">カン</button>`);
-      b.push(`<button class="btn ghost" data-a="pass">スキップ</button>`);
+      b.push(`<button class="btn ghost${rec('pass')}" data-a="pass">スキップ</button>`);
     }
     this.actions.innerHTML = b.join('');
     this.actions.onclick = (e) => {

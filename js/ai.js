@@ -22,7 +22,7 @@ export function doraKinds(game) {
   return game.doraIndicators.map((id) => doraFromIndicator(kindOf(id)));
 }
 
-function isYakuhai(game, seat, k) {
+export function isYakuhai(game, seat, k) {
   return isDragon(k) || k === game.seatWind(seat) || k === game.roundWindKind;
 }
 
@@ -134,7 +134,7 @@ export function estimateHan(game, seat) {
 }
 
 // 鳴いた後の手に役の見込みがあるか
-function yakuPath(game, seat, counts, melds) {
+export function yakuPath(game, seat, counts, melds) {
   // counts: 鳴き後の手牌, melds: [{type,k}]
   const all = counts.slice();
   for (const m of melds) {
