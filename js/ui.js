@@ -117,6 +117,12 @@ export class UI {
       case 'gameStart':
         this.render();
         break;
+      case 'handResume':
+        this.lastDiscardId = game.lastDiscard ? game.lastDiscard.id : null;
+        this.render();
+        this.callout('対局を再開', 0, true, false);
+        await this.sleep(700);
+        break;
       case 'handStart':
         this.lastDiscardId = null;
         this.render();
@@ -818,6 +824,7 @@ export class UI {
 export class HumanAgent {
   constructor(ui) {
     this.ui = ui;
+    this.isHuman = true;
   }
   selfAction(game, seat, opts) {
     return this.ui.promptSelf(opts);

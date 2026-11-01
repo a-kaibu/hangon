@@ -1,4 +1,5 @@
 import { Game } from './game.js';
+import { makeRng } from './tile.js';
 import { CpuAgent } from './ai.js';
 import { UI, HumanAgent } from './ui.js';
 import { tileSrc } from './ui.js';
@@ -33,23 +34,67 @@ if (new URLSearchParams(location.search).has('open')) settings.debugOpen = true;
 document.body.classList.toggle('three-d', settings.threeD);
 const ui = new UI(settings, startGame);
 
-function startGame() {
+const SAVE_KEY = 'hangon.save';
+
+function loadSave() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    const data = raw ? JSON.parse(raw) : null;
+    return data && data.version === 1 && !data.over ? data : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeSave(data) {
+  try {
+    data.level = settings.level;
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+  } catch {
+    /* 保存できない環境では何もしない */
+  }
+}
+
+function clearSave() {
+  try {
+    localStorage.removeItem(SAVE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+// save を渡すと途中から再開、なければ新しい対局
+function startGame(save = null) {
+  const level = save?.level || settings.level;
   const human = new HumanAgent(ui);
-  const cpu = [1, 2, 3].map(() => new CpuAgent(settings.level));
+  const cpu = [1, 2, 3].map(() => new CpuAgent(level));
   const game = new Game({
     agents: [human, ...cpu],
-    names: ['あなた', 'CPU 南', 'CPU 西', 'CPU 北'],
-    rules: { length: settings.length },
+    rules: { length: save?.rules?.length || settings.length },
+    rng: makeRng((Math.random() * 2 ** 32) >>> 0),
     ui,
   });
   game.names = ['あなた', '下家 CPU', '対面 CPU', '上家 CPU'];
+  let point = null;
+  if (save) point = game.restore(save);
+  else clearSave();
+  game.onCheckpoint = (data) => {
+    data.level = level;
+    writeSave(data);
+  };
   ui.attach(game);
-  game.run().catch((e) => {
-    if (e.message !== 'cancelled') {
-      console.error(e);
-      alert('エラーが発生しました: ' + e.message);
-    }
-  });
+  game
+    .run(point)
+    .then(() => clearSave())
+    .catch((e) => {
+      if (e.message !== 'cancelled') {
+        console.error(e);
+        clearSave();
+        alert('エラーが発生しました: ' + e.message);
+      }
+    });
 }
 
-ui.showSettings(true);
+const saved = loadSave();
+if (saved) startGame(saved);
+else ui.showSettings(true);

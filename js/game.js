@@ -23,6 +23,49 @@ export class Game {
     this.over = false;
   }
 
+  checkpoint(point) {
+    if (this.onCheckpoint) this.onCheckpoint(this.serialize(point));
+  }
+
+  serialize(point) {
+    const keys = [
+      'scores',
+      'names',
+      'rules',
+      'roundWind',
+      'firstDealer',
+      'kyoku',
+      'honba',
+      'riichiSticks',
+      'handCount',
+      'over',
+      'dead',
+      'live',
+      'kanCount',
+      'doraIndicators',
+      'anyCall',
+      'totalDiscards',
+      'discardLog',
+      'lastDiscard',
+      'players',
+    ];
+    const data = {};
+    for (const k of keys) data[k] = this[k];
+    data.rngState = this.rng.getState ? this.rng.getState() : null;
+    data.point = point;
+    data.version = 1;
+    return JSON.parse(JSON.stringify(data));
+  }
+
+  restore(data) {
+    for (const [k, v] of Object.entries(data)) {
+      if (k === 'rngState' || k === 'point' || k === 'version') continue;
+      this[k] = v;
+    }
+    if (data.rngState !== null && this.rng.setState) this.rng.setState(data.rngState);
+    return data.point;
+  }
+
   async emit(type, data = {}) {
     if (this.ui) await this.ui.event(type, data, this);
   }
@@ -43,10 +86,12 @@ export class Game {
     return `${'東南西北'[this.roundWind]}${this.kyoku + 1}局`;
   }
 
-  async run() {
-    await this.emit('gameStart');
+  // resume: restore() で読み込んだ途中局から再開する場合の再開地点
+  async run(resume = null) {
+    await this.emit('gameStart', { resumed: !!resume });
     while (!this.over) {
-      const result = await this.playHand();
+      const result = await this.playHand(resume);
+      resume = null;
       this.history.push(result);
       this.advance(result);
       await this.emit('handEnd', { result });
@@ -312,21 +357,35 @@ export class Game {
     return id;
   }
 
-  async playHand() {
-    this.setupHand();
-    await this.emit('handStart');
-    let cur = this.dealer;
-    let mode = 'draw'; // 'draw' | 'rinshan' | 'call'
+  async playHand(resume = null) {
+    let cur, mode;
+    let rinshan = false;
+    if (resume) {
+      // 保存された状態から再開 ('draw' = 局の開始直後, 'self' = ツモ後の自分の手番)
+      cur = resume.cur;
+      mode = resume.mode;
+      rinshan = !!resume.rinshan;
+      await this.emit('handResume');
+    } else {
+      this.setupHand();
+      cur = this.dealer;
+      mode = 'draw'; // 'draw' | 'rinshan' | 'call'
+      this.checkpoint({ cur, mode });
+      await this.emit('handStart');
+    }
     while (true) {
       const p = this.players[cur];
-      let rinshan = false;
-      if (mode === 'draw' || mode === 'rinshan') {
+      if (mode === 'self') {
+        mode = p.drawn === null ? 'call' : rinshan ? 'rinshan' : 'draw';
+      } else if (mode === 'draw' || mode === 'rinshan') {
+        rinshan = false;
         if (mode === 'draw' && this.live.length === 0) return this.exhaustiveDraw();
         rinshan = mode === 'rinshan';
         const id = this.drawTile(cur, rinshan);
         await this.emit('draw', { seat: cur, id, rinshan });
       } else {
         p.drawn = null;
+        rinshan = false;
       }
 
       // 自分の手番の行動
@@ -342,6 +401,7 @@ export class Game {
       if (p.riichi && !opts.tsumo && opts.kans.length === 0) {
         act = { type: 'discard', id: p.drawn };
       } else {
+        if (this.agents[cur].isHuman) this.checkpoint({ cur, mode: 'self', rinshan });
         act = await this.agents[cur].selfAction(this, cur, opts);
       }
       if (act.type === 'tsumo' && opts.tsumo) {
