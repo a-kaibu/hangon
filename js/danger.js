@@ -47,7 +47,7 @@ export function tileDanger(game, viewer, target, k, visible, safe) {
       pct = yakuhai ? 9.0 : 7.0;
       reason = '生牌 (まだ見えていない字牌)';
     }
-    return { pct: pct * doraMul, reason, tag: left <= 2 ? '字牌' : '字牌注意' };
+    return { pct: pct * doraMul, reason, tag: left >= 4 ? '生牌' : '字牌' };
   }
   const n = numOf(k);
   const base = k - (n - 1);

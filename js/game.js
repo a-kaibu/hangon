@@ -557,6 +557,7 @@ export class Game {
       this.scores[seat] -= 1000;
       this.riichiSticks++;
       p.ippatsu = true;
+      p.riichiPaid = true;
       await this.emit('riichiEstablished', { seat });
       if (this.players.every((q) => q.riichi)) {
         await this.emit('abort', { reason: '四家立直' });

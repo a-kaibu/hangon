@@ -410,6 +410,9 @@ button {
     0 0 0 2px var(--safe),
     0 0 12px rgba(92, 194, 140, 0.7);
 }
+.my-melds .tile-cell {
+  width: auto;
+}
 .my-melds .tile {
   --w: calc(var(--htw) * 0.78);
 }
@@ -993,66 +996,33 @@ button {
   margin-top: 14px;
 }
 
-/* ---------- 3D 表示 ---------- */
-.board-wrap {
-  perspective: 1600px;
-  perspective-origin: 50% 0%;
-}
-.three-d .board {
-  transform: rotateX(32deg);
-  transform-origin: 50% 60%;
-  transform-style: preserve-3d;
+/* ---------- 3D 表示 (WebGL) ---------- */
+.board.webgl {
+  width: min(calc(100vw - 8px), 1100px);
+  height: min(calc(100dvh - 240px), max(var(--bw), calc(100vw * 1.4)));
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
   overflow: visible;
-  margin-top: calc(var(--bw) * -0.06);
-  margin-bottom: calc(var(--bw) * -0.07);
+}
+.board.webgl::before {
+  display: none;
+}
+.board3d-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.webgl-on .my-hand .tile {
   box-shadow:
-    inset 0 0 0 2px rgba(0, 0, 0, 0.25),
-    inset 0 0 60px rgba(0, 0, 0, 0.35),
-    0 calc(var(--tw) * 0.5) 0 #0b1417,
-    0 calc(var(--tw) * 0.5 + 18px) 40px rgba(0, 0, 0, 0.55);
+    0 calc(var(--w) * 0.08) 0 #e3e0d6,
+    0 calc(var(--w) * 0.14) 0 #2b7f8a,
+    0 calc(var(--w) * 0.14 + 3px) 6px rgba(0, 0, 0, 0.5);
 }
-.three-d .seat {
-  transform-style: preserve-3d;
-}
-.three-d .opp-area {
-  transform-style: preserve-3d;
-  transform-origin: 50% 100%;
-  transform: translateX(-50%) rotateX(-38deg);
-}
-.three-d .center {
-  transform: translate(-50%, -50%) translateZ(2px);
-}
-/* 卓上の牌に厚み */
-.three-d .board .tile:not(.back) {
+.webgl-on .my-hand .tile.reco {
   box-shadow:
-    0 calc(var(--w) * 0.1) 0 #d9b968,
-    0 calc(var(--w) * 0.1 + 2px) 3px rgba(0, 0, 0, 0.45);
-}
-.three-d .board .tile.back {
-  box-shadow:
-    0 calc(var(--w) * 0.12) 0 #f2eee2,
-    0 calc(var(--w) * 0.12 + 2px) 3px rgba(0, 0, 0, 0.45);
-}
-.three-d .board .tile.last {
-  box-shadow:
-    0 calc(var(--w) * 0.1) 0 #d9b968,
-    0 0 0 2px var(--accent),
-    0 0 10px var(--accent);
-}
-/* 自分の手牌も立てて見せる */
-.three-d .my-hand {
-  perspective: 900px;
-}
-.three-d .my-hand .tile {
-  box-shadow:
-    0 calc(var(--w) * 0.08) 0 #d9b968,
-    0 calc(var(--w) * 0.12) 0 #c49f4c,
-    0 calc(var(--w) * 0.12 + 3px) 6px rgba(0, 0, 0, 0.5);
-}
-.three-d .my-hand .tile.reco {
-  box-shadow:
-    0 calc(var(--w) * 0.08) 0 #d9b968,
-    0 calc(var(--w) * 0.12) 0 #c49f4c,
+    0 calc(var(--w) * 0.08) 0 #e3e0d6,
+    0 calc(var(--w) * 0.14) 0 #2b7f8a,
     0 0 0 2px var(--safe),
     0 0 14px rgba(92, 194, 140, 0.8);
 }
@@ -1064,4 +1034,24 @@ button {
 .three-d .assist {
   background: rgba(8, 18, 22, 0.7);
   border-radius: 999px;
+}
+
+@media (orientation: landscape) and (max-height: 640px) {
+  .board.webgl {
+    width: min(calc(100dvh * 1.3), calc(100vw - 300px));
+    height: calc(100dvh - 44px);
+  }
+  :root {
+    --htw: min(50px, calc((100vw - min(calc(100dvh * 1.3), calc(100vw - 300px)) - 36px) / 14.8));
+  }
+}
+
+.tile-cell {
+  width: var(--htw);
+}
+.tile-cell .badge {
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: clip;
 }

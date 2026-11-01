@@ -5,6 +5,7 @@ import { chooseDiscard, LEVELS } from './ai.js';
 import { combinedDanger, dangerLevel, threatLevel } from './danger.js';
 import { YAKU_LIST, DORA_NOTE } from './yakulist.js';
 import { guidePages } from './guide.js';
+import { Board3D, webglAvailable } from './board3d.js';
 
 const REL_NAMES = ['あなた', '下家', '対面', '上家'];
 const ROT = ['0deg', '-90deg', '180deg', '90deg'];
@@ -188,6 +189,10 @@ export class UI {
   }
 
   callout(text, seat, center = false, red = false) {
+    if (this.b3d && !center) {
+      const [x, y] = this.b3d.seatScreenPos(seat);
+      return this.placeCallout(text, x, y, red);
+    }
     const rect = this.board.getBoundingClientRect();
     const cx = rect.left + rect.width / 2,
       cy = rect.top + rect.height / 2;
@@ -200,11 +205,15 @@ export class UI {
           [cx, cy - off],
           [cx - off, cy],
         ][seat];
+    this.placeCallout(text, pos[0], pos[1], red);
+  }
+
+  placeCallout(text, x, y, red) {
     const el = document.createElement('div');
     el.className = 'callout' + (red ? ' red' : '');
     el.textContent = text;
-    el.style.left = pos[0] + 'px';
-    el.style.top = pos[1] + 'px';
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
     this.callouts.appendChild(el);
     setTimeout(() => el.remove(), 1000);
   }
@@ -222,8 +231,28 @@ export class UI {
     this.renderAssist();
   }
 
+  // 3D 表示の切り替え (WebGL が使えなければ平面表示)
+  sync3D() {
+    const want = !!this.settings.threeD && webglAvailable();
+    if (want && !this.b3d) {
+      this.board.innerHTML = '';
+      this.board.classList.add('webgl');
+      this.b3d = new Board3D(this.board);
+    } else if (!want && this.b3d) {
+      this.b3d.dispose();
+      this.b3d = null;
+      this.board.classList.remove('webgl');
+    }
+    document.body.classList.toggle('webgl-on', !!this.b3d);
+  }
+
   renderBoard(reveal) {
     const g = this.game;
+    this.sync3D();
+    if (this.b3d) {
+      this.b3d.update(g, { reveal, lastDiscardId: this.lastDiscardId, turnSeat: this.currentTurnSeat() });
+      return;
+    }
     let html = '';
     const turnSeat = this.currentTurnSeat();
     for (let rel = 0; rel < 4; rel++) {
