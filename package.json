@@ -1,0 +1,9 @@
+{
+  "name": "hangon",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node test/run.js && node test/sim.js 20",
+    "sim": "node test/sim.js 200"
+  }
+}
